@@ -51,7 +51,6 @@ struct PlacementView: View {
                     .foregroundStyle(.white.opacity(0.75))
 
                 boardGrid
-                    .aspectRatio(1, contentMode: .fit)
                     .padding(.horizontal, 14)
 
                 tray
@@ -95,7 +94,8 @@ struct PlacementView: View {
 
     private var boardGrid: some View {
         GeometryReader { geo in
-            let cellSize = geo.size.width / 10
+            let side = min(geo.size.width, geo.size.height)
+            let cellSize = side / 10
             ZStack(alignment: .topLeading) {
                 // Water tiles
                 ForEach(Coordinate.allBoardCells, id: \.self) { cell in
@@ -135,12 +135,14 @@ struct PlacementView: View {
                         .gesture(boardShipDrag(ship, cellSize: cellSize))
                 }
             }
+            .frame(width: side, height: side)
             .contentShape(Rectangle())
             .coordinateSpace(name: "board")
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.size.width
-            } action: { width in
-                boardSideLength = width
+            .position(x: geo.size.width / 2, y: geo.size.height / 2)
+            .onGeometryChange(for: CGFloat.self) { _ in
+                side
+            } action: { value in
+                boardSideLength = value
             }
         }
     }
@@ -230,7 +232,7 @@ struct PlacementView: View {
     // MARK: - Tray
 
     private var tray: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
             if trayKinds.isEmpty {
                 Text("Fleet ready, Captain! ⚓️")
                     .font(.headline.weight(.bold))
@@ -242,14 +244,14 @@ struct PlacementView: View {
         }
         .frame(height: 64)
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 8)
         .background(.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal, 14)
     }
 
     private func trayShip(_ kind: ShipKind) -> some View {
         shipImage(kind)
-            .frame(width: CGFloat(kind.length) * 24, height: 26)
+            .frame(maxWidth: CGFloat(kind.length) * 17, maxHeight: 24)
             .opacity(draggingKind == kind && liftedShip == nil ? 0.3 : 1)
             .gesture(trayDrag(kind))
             .accessibilityLabel(kind.displayName)

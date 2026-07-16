@@ -13,7 +13,7 @@ final class AIOpponentController: OpponentController {
         self.thinkDelay = thinkDelay
     }
 
-    func nextMove(state: GameState) async -> Move {
+    func nextMove(state: GameState) async -> Move? {
         try? await Task.sleep(for: thinkDelay)
         return ai.chooseMove(
             as: player,

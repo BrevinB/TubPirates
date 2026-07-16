@@ -1,9 +1,12 @@
 import SwiftUI
+import GameKit
 import BathtubEngine
 
 struct MainMenuView: View {
     @Binding var path: [Route]
     @Environment(ProfileStore.self) private var profileStore
+    @State private var gameCenter = GameCenterService.shared
+    @State private var showMatchmaker = false
 
     var body: some View {
         ZStack {
@@ -47,6 +50,19 @@ struct MainMenuView: View {
                             loadout: profileStore.unlockedShots
                         )))
                     }
+                    menuButton("Pass & Play", icon: "person.2.fill", tint: .teal) {
+                        path.append(.match(MatchConfig(
+                            mode: .passAndPlay,
+                            loadout: profileStore.unlockedShots
+                        )))
+                    }
+                    menuButton("Online Battle", icon: "globe.americas.fill", tint: .indigo) {
+                        if gameCenter.isAuthenticated {
+                            showMatchmaker = true
+                        } else {
+                            gameCenter.authenticate()
+                        }
+                    }
                     menuButton("Armory", icon: "shield.lefthalf.filled", tint: .blue) {
                         path.append(.armory)
                     }
@@ -60,6 +76,34 @@ struct MainMenuView: View {
             .padding()
         }
         .toolbarVisibility(.hidden, for: .navigationBar)
+        .sheet(isPresented: $showMatchmaker) {
+            MatchmakerSheet(
+                onMatch: { match in
+                    showMatchmaker = false
+                    Task { await routeToOnlineMatch(match) }
+                },
+                onCancel: { showMatchmaker = false }
+            )
+            .ignoresSafeArea()
+        }
+    }
+
+    /// New matches go to placement first; rejoining a match with our fleet already
+    /// placed goes straight to the battle.
+    private func routeToOnlineMatch(_ match: GKTurnBasedMatch) async {
+        let service = GameCenterService.shared
+        service.register(match)
+        let seat = service.localSeat(in: match)
+        _ = service.controller(for: match.matchID) ?? service.makeController(for: match, localPlayer: seat)
+
+        let data = (try? await GameCenterController.loadGame(from: match)) ?? OnlineMatchData()
+        let seatKey = seat == .one ? "0" : "1"
+        let config = MatchConfig(mode: .gameCenter(matchID: match.matchID), loadout: Set(ShotType.allCases))
+        if data.boards[seatKey] == nil {
+            path.append(.placement(config))
+        } else {
+            path.append(.match(config))
+        }
     }
 
     private var coinChip: some View {

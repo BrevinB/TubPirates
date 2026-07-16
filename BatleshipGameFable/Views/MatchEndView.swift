@@ -2,8 +2,13 @@ import SwiftUI
 
 struct MatchEndView: View {
     let didWin: Bool
+    let title: String
+    let message: String
+    let coinReward: Int
     let onRematch: () -> Void
     let onExit: () -> Void
+
+    @State private var displayedCoins = 0
 
     var body: some View {
         ZStack {
@@ -15,20 +20,38 @@ struct MatchEndView: View {
             )
             .ignoresSafeArea()
 
-            VStack(spacing: 32) {
+            VStack(spacing: 28) {
                 Spacer()
 
-                Text(didWin ? "🏆" : "💦")
-                    .font(.system(size: 90))
-                Text(didWin ? "Victory!" : "Sunk!")
+                Image(didWin ? "portrait_player" : "portrait_dogbeard")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 120, height: 120)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                    .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(.white.opacity(0.8), lineWidth: 4))
+                    .shadow(radius: 8)
+
+                Text(title)
                     .font(.system(size: 48, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
-                Text(didWin
-                     ? "Dogbeard's fleet rests at the bottom of the tub."
-                     : "Dogbeard cackles as your last ship goes under.")
+                Text(message)
                     .font(.title3)
                     .foregroundStyle(.white.opacity(0.85))
                     .multilineTextAlignment(.center)
+
+                if coinReward > 0 {
+                    HStack(spacing: 8) {
+                        Text("🪙")
+                            .font(.system(size: 30))
+                        Text("+\(displayedCoins)")
+                            .font(.system(size: 34, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.yellow)
+                            .contentTransition(.numericText(value: Double(displayedCoins)))
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 10)
+                    .background(.black.opacity(0.3), in: Capsule())
+                }
 
                 Spacer()
 
@@ -56,13 +79,27 @@ struct MatchEndView: View {
             }
             .padding()
         }
+        .task {
+            // Count the reward up in steps.
+            let steps = 24
+            for i in 1...steps {
+                try? await Task.sleep(for: .milliseconds(38))
+                withAnimation(.linear(duration: 0.04)) {
+                    displayedCoins = coinReward * i / steps
+                }
+            }
+        }
     }
 }
 
 #Preview("Win") {
-    MatchEndView(didWin: true, onRematch: {}, onExit: {})
+    MatchEndView(didWin: true, title: "Victory!",
+                 message: "Dogbeard's fleet rests at the bottom of the tub.",
+                 coinReward: 280, onRematch: {}, onExit: {})
 }
 
 #Preview("Loss") {
-    MatchEndView(didWin: false, onRematch: {}, onExit: {})
+    MatchEndView(didWin: false, title: "Sunk!",
+                 message: "Dogbeard cackles as your last ship goes under.",
+                 coinReward: 25, onRematch: {}, onExit: {})
 }

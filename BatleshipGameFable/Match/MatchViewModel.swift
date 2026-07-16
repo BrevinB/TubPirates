@@ -1,4 +1,7 @@
+import Foundation
+import GameKit
 import Observation
+import UIKit
 import BathtubEngine
 
 /// What the scene must be able to render on the view model's behalf.
@@ -16,24 +19,41 @@ final class MatchViewModel {
         case resolvingPlayerShot
         case opponentThinking
         case resolvingOpponentShot
+        case awaitingHandoff(next: PlayerID)
         case finished(winner: PlayerID)
     }
 
+    let mode: MatchConfig.Mode
     private(set) var state: GameState
     private(set) var turnState: TurnState = .playerTargeting
-    let localPlayer: PlayerID = .one
+    /// Whose perspective the boards render from. Fixed in AI mode; swaps in pass-and-play.
+    private(set) var activePlayer: PlayerID = .one
+    /// The local seat: .one for AI matches, assigned by Game Center online.
+    private let fixedLocalPlayer: PlayerID
+    var localPlayer: PlayerID { mode == .passAndPlay ? activePlayer : fixedLocalPlayer }
     var selectedShot: ShotType = .cannon
     var selectedOrientation: Orientation = .horizontal
 
-    private let opponent: OpponentController
+    private let opponent: OpponentController?
     weak var renderer: BattleSceneRendering?
 
     /// Debug/demo: an AI plays the local side too (`-autoBattle` launch argument).
     private let autoPlay = CommandLine.arguments.contains("-autoBattle")
     private var playerAI = BattleAI()
 
+    /// Drives the end screen's celebratory vs somber styling.
     var didWin: Bool {
-        turnState == .finished(winner: localPlayer)
+        guard case .finished(let winner) = turnState else { return false }
+        return mode == .passAndPlay || winner == .one
+    }
+
+    /// Which portrait to spotlight in the HUD right now.
+    var highlightedPlayer: PlayerID? {
+        switch turnState {
+        case .finished, .awaitingHandoff: nil
+        case .playerTargeting, .resolvingPlayerShot: localPlayer
+        case .opponentThinking, .resolvingOpponentShot: localPlayer.opponent
+        }
     }
 
     /// The enemy board as the local player is allowed to see it.
@@ -45,41 +65,105 @@ final class MatchViewModel {
         state.boards[localPlayer] ?? Board()
     }
 
-    var statusText: String {
-        switch turnState {
-        case .playerTargeting: "Your turn — fire!"
-        case .resolvingPlayerShot: "Firing..."
-        case .opponentThinking: "Dogbeard is aiming..."
-        case .resolvingOpponentShot: "Incoming!"
-        case .finished(let winner): winner == localPlayer ? "Victory!" : "Defeat!"
+    func displayName(for player: PlayerID) -> String {
+        switch mode {
+        case .ai: player == localPlayer ? "You" : "Dogbeard"
+        case .passAndPlay: player == .one ? "Captain 1" : "Captain 2"
+        case .gameCenter: player == localPlayer ? "You" : "Opponent"
         }
     }
 
-    /// Coins earned by the local player for this match's result.
+    var statusText: String {
+        switch turnState {
+        case .playerTargeting:
+            mode == .passAndPlay ? "\(displayName(for: activePlayer)) — fire!" : "Your turn — fire!"
+        case .resolvingPlayerShot: "Firing..."
+        case .opponentThinking: "\(displayName(for: localPlayer.opponent)) is aiming..."
+        case .resolvingOpponentShot: "Incoming!"
+        case .awaitingHandoff: "Pass the tub..."
+        case .finished(let winner):
+            mode == .passAndPlay
+                ? "\(displayName(for: winner)) wins!"
+                : (winner == localPlayer ? "Victory!" : "Defeat!")
+        }
+    }
+
+    var endTitle: String {
+        guard case .finished(let winner) = turnState else { return "" }
+        return mode == .passAndPlay
+            ? "\(displayName(for: winner)) Wins!"
+            : (winner == localPlayer ? "Victory!" : "Sunk!")
+    }
+
+    var endMessage: String {
+        guard case .finished(let winner) = turnState else { return "" }
+        switch mode {
+        case .ai:
+            return winner == localPlayer
+                ? "Dogbeard's fleet rests at the bottom of the tub."
+                : "Dogbeard cackles as your last ship goes under."
+        case .passAndPlay:
+            return "\(displayName(for: winner.opponent))'s fleet rests at the bottom of the tub."
+        case .gameCenter:
+            return winner == localPlayer
+                ? "Your rival's fleet rests at the bottom of the tub."
+                : "Your last ship gurgles to the bottom of the tub."
+        }
+    }
+
+    /// Coins earned by the local player for this match's result (not pass-and-play).
     var coinReward: Int {
-        guard case .finished(let winner) = turnState else { return 0 }
-        return winner == localPlayer ? 200 + 10 * ownBoard.survivingShipCellCount : 25
+        guard mode != .passAndPlay, case .finished(let winner) = turnState else { return 0 }
+        return winner == localPlayer
+            ? 200 + 10 * (state.boards[localPlayer]?.survivingShipCellCount ?? 0)
+            : 25
     }
 
     init(config: MatchConfig) {
+        mode = config.mode
+        fixedLocalPlayer = .one
         var rng = SystemRandomNumberGenerator()
         let boards: [PlayerID: Board] = [
             .one: config.playerBoard ?? Board.randomlyPlaced(using: &rng),
             .two: Board.randomlyPlaced(using: &rng),
         ]
-        // Dogbeard always sails fully armed; the player brings their unlocked arsenal.
-        state = GameState(boards: boards, loadouts: [
-            .one: config.loadout,
-            .two: Set(ShotType.allCases),
-        ])
-        opponent = AIOpponentController(
-            thinkDelay: CommandLine.arguments.contains("-autoBattle") ? .milliseconds(80) : .milliseconds(900)
-        )
+        switch config.mode {
+        case .ai, .gameCenter:
+            // Dogbeard always sails fully armed; the player brings their unlocked arsenal.
+            // (.gameCenter never lands here — online matches use init(gameCenterState:...).)
+            state = GameState(boards: boards, loadouts: [
+                .one: config.loadout,
+                .two: Set(ShotType.allCases),
+            ])
+            opponent = AIOpponentController(
+                thinkDelay: CommandLine.arguments.contains("-autoBattle") ? .milliseconds(80) : .milliseconds(900)
+            )
+        case .passAndPlay:
+            // Both captains share the profile's unlocked arsenal — simple and fair.
+            state = GameState(boards: boards, loadouts: [
+                .one: config.loadout,
+                .two: config.loadout,
+            ])
+            opponent = nil
+        }
+    }
+
+    /// Online matches arrive with a server-synced state and an assigned seat.
+    init(gameCenterState: GameState, localPlayer: PlayerID, controller: GameCenterController) {
+        mode = .gameCenter(matchID: controller.match.matchID)
+        fixedLocalPlayer = localPlayer
+        state = gameCenterState
+        opponent = controller
+        controller.markKnown(state: gameCenterState)
     }
 
     /// Called once the scene is wired up; kicks off auto-play when enabled.
     func matchDidStart() {
         schedulePlayerAutoMoveIfNeeded()
+        // Rejoining an online match on the opponent's turn: start listening.
+        if case .gameCenter = mode, state.currentPlayer != localPlayer, state.phase == .active {
+            Task { await awaitOpponentMove() }
+        }
     }
 
     // MARK: - Shot panel
@@ -156,24 +240,68 @@ final class MatchViewModel {
         }
 
         await renderer?.playResolution(resolution, onEnemyBoard: move.player == localPlayer)
+        playHaptics(for: resolution)
+
+        // Online: our own applied move must reach Game Center before anything else
+        // (submitLocalTurn also ends the match when this move won it).
+        if case .gameCenter = mode, move.player == localPlayer,
+           let controller = opponent as? GameCenterController {
+            try? await controller.submitLocalTurn(state: state)
+        }
 
         if let winner = resolution.winner {
             turnState = .finished(winner: winner)
             return
         }
 
-        if state.currentPlayer == localPlayer {
-            // A spent special can't stay selected.
-            if state.remainingUses(of: selectedShot, for: localPlayer) == 0 {
-                selectedShot = .cannon
+        switch mode {
+        case .passAndPlay:
+            // Swap perspective behind the privacy cover before the next captain looks.
+            let next = state.currentPlayer
+            turnState = .awaitingHandoff(next: next)
+            activePlayer = next
+            selectedShot = .cannon
+            renderer?.refreshBoards()
+        case .ai, .gameCenter:
+            if state.currentPlayer == localPlayer {
+                // A spent special can't stay selected.
+                if state.remainingUses(of: selectedShot, for: localPlayer) == 0 {
+                    selectedShot = .cannon
+                }
+                turnState = .playerTargeting
+                schedulePlayerAutoMoveIfNeeded()
+            } else {
+                await awaitOpponentMove()
             }
-            turnState = .playerTargeting
-            schedulePlayerAutoMoveIfNeeded()
-        } else {
-            turnState = .opponentThinking
-            let opponentMove = await opponent.nextMove(state: state)
-            turnState = .resolvingOpponentShot
-            await resolveAndContinue(opponentMove)
+        }
+    }
+
+    private func awaitOpponentMove() async {
+        guard let opponent else { return }
+        turnState = .opponentThinking
+        guard let opponentMove = await opponent.nextMove(state: state) else {
+            // Opponent forfeited (online quit).
+            turnState = .finished(winner: localPlayer)
+            return
+        }
+        turnState = .resolvingOpponentShot
+        await resolveAndContinue(opponentMove)
+    }
+
+    /// The incoming captain confirmed they have the device (pass-and-play).
+    func confirmHandoff() {
+        guard case .awaitingHandoff = turnState else { return }
+        turnState = .playerTargeting
+    }
+
+    private func playHaptics(for resolution: MoveResolution) {
+        let defaults = UserDefaults.standard
+        let enabled = defaults.object(forKey: "hapticsEnabled") == nil || defaults.bool(forKey: "hapticsEnabled")
+        guard enabled else { return }
+        if !resolution.sunkShips.isEmpty {
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+        } else if resolution.cellResults.contains(where: { $0.outcome == .hit }) {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         }
     }
 

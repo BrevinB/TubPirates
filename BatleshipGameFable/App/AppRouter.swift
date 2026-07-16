@@ -11,6 +11,7 @@ enum Route: Hashable {
 struct RootView: View {
     @State private var path: [Route] = []
     @State private var profileStore = ProfileStore()
+    @State private var gameCenter = GameCenterService.shared
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -29,9 +30,26 @@ struct RootView: View {
                 }
         }
         .environment(profileStore)
+        .onChange(of: gameCenter.pendingMatchID) { _, matchID in
+            // User tapped a Game Center turn notification — jump into that match.
+            guard let matchID else { return }
+            gameCenter.pendingMatchID = nil
+            path = [.match(MatchConfig(mode: .gameCenter(matchID: matchID), loadout: Set(ShotType.allCases)))]
+        }
         .onAppear {
-            if CommandLine.arguments.contains("-autoBattle") {
-                path = [.match(MatchConfig(mode: .ai, loadout: Set(ShotType.allCases)))]
+            gameCenter.authenticate()
+            let args = CommandLine.arguments
+            if args.contains("-autoBattle") {
+                let mode: MatchConfig.Mode = args.contains("-pnp") ? .passAndPlay : .ai
+                path = [.match(MatchConfig(mode: mode, loadout: Set(ShotType.allCases)))]
+            } else if let index = args.firstIndex(of: "-screen"), index + 1 < args.count {
+                // Debug deep links for testing: -screen placement|armory|settings
+                switch args[index + 1] {
+                case "placement": path = [.placement(MatchConfig(mode: .ai))]
+                case "armory": path = [.armory]
+                case "settings": path = [.settings]
+                default: break
+                }
             }
         }
     }

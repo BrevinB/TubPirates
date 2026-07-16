@@ -21,9 +21,12 @@ private struct MatchContentView: View {
     @Binding var path: [Route]
     let onRematch: () -> Void
 
+    @Environment(ProfileStore.self) private var profileStore
     @State private var viewModel: MatchViewModel?
     @State private var scene: BattleScene?
     @State private var showEndScreen = false
+    @State private var rewardApplied = false
+    @State private var waitingForOpponent = false
 
     var body: some View {
         ZStack {
@@ -36,12 +39,43 @@ private struct MatchContentView: View {
 
             if let viewModel {
                 hud(viewModel)
+
+                // Pass-and-play privacy cover (opaque; boards already swapped beneath it).
+                if case .awaitingHandoff(let next) = viewModel.turnState {
+                    PassDeviceView(incomingName: viewModel.displayName(for: next)) {
+                        viewModel.confirmHandoff()
+                    }
+                    .transition(.opacity)
+                    .zIndex(10)
+                }
+            }
+
+            if waitingForOpponent {
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .controlSize(.large)
+                        .tint(.white)
+                    Text("Waiting for your rival to place their fleet...")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                    Button("Back to Menu") { path.removeAll() }
+                        .buttonStyle(.bordered)
+                        .tint(.white)
+                }
+                .padding()
             }
         }
+        .animation(.easeInOut(duration: 0.25), value: viewModel?.turnState)
         .toolbarVisibility(.hidden, for: .navigationBar)
         .onAppear(perform: startMatchIfNeeded)
         .onChange(of: viewModel?.turnState) { _, newState in
             if case .finished = newState {
+                if let viewModel, !rewardApplied {
+                    rewardApplied = true
+                    profileStore.award(coins: viewModel.coinReward)
+                    profileStore.recordResult(won: viewModel.didWin)
+                }
                 showEndScreen = true
             }
         }
@@ -49,6 +83,9 @@ private struct MatchContentView: View {
             if let viewModel {
                 MatchEndView(
                     didWin: viewModel.didWin,
+                    title: viewModel.endTitle,
+                    message: viewModel.endMessage,
+                    coinReward: viewModel.coinReward,
                     onRematch: {
                         showEndScreen = false
                         onRematch()
@@ -67,17 +104,16 @@ private struct MatchContentView: View {
             HStack(alignment: .top) {
                 PlayerHUDView(
                     imageName: "portrait_dogbeard",
-                    name: "Dogbeard",
-                    highlighted: viewModel.turnState == .opponentThinking
-                        || viewModel.turnState == .resolvingOpponentShot
+                    name: viewModel.displayName(for: .two),
+                    highlighted: viewModel.highlightedPlayer == .two
                 )
                 Spacer()
                 statusBanner(viewModel)
                 Spacer()
                 PlayerHUDView(
                     imageName: "portrait_player",
-                    name: "You",
-                    highlighted: viewModel.turnState == .playerTargeting
+                    name: viewModel.displayName(for: .one),
+                    highlighted: viewModel.highlightedPlayer == .one
                 )
             }
             .padding(.horizontal, 12)
@@ -105,8 +141,15 @@ private struct MatchContentView: View {
     }
 
     private func startMatchIfNeeded() {
-        guard viewModel == nil else { return }
-        let newViewModel = MatchViewModel(config: config)
+        guard viewModel == nil, !waitingForOpponent else { return }
+        if case .gameCenter(let matchID) = config.mode {
+            startOnlineMatch(matchID)
+        } else {
+            attach(MatchViewModel(config: config))
+        }
+    }
+
+    private func attach(_ newViewModel: MatchViewModel) {
         let newScene = BattleScene()
         newScene.scaleMode = .resizeFill
         newScene.viewModel = newViewModel
@@ -114,5 +157,39 @@ private struct MatchContentView: View {
         viewModel = newViewModel
         scene = newScene
         newViewModel.matchDidStart()
+    }
+
+    private func startOnlineMatch(_ matchID: String) {
+        let service = GameCenterService.shared
+        guard let match = service.matches[matchID] else {
+            path.removeAll()
+            return
+        }
+        let seat = service.localSeat(in: match)
+        let controller = service.controller(for: matchID) ?? service.makeController(for: match, localPlayer: seat)
+        waitingForOpponent = true
+        Task {
+            do {
+                var data = try await GameCenterController.loadGame(from: match)
+                let seatKey = seat == .one ? "0" : "1"
+                if data.boards[seatKey] == nil, let board = config.playerBoard {
+                    data = try await controller.submitSetup(board: board)
+                }
+                if let state = data.state {
+                    waitingForOpponent = false
+                    attach(MatchViewModel(gameCenterState: state, localPlayer: seat, controller: controller))
+                } else {
+                    // Our board is in; the rival is still placing. Stay on the waiting screen.
+                    controller.onStateReady = { state in
+                        waitingForOpponent = false
+                        attach(MatchViewModel(gameCenterState: state, localPlayer: seat, controller: controller))
+                    }
+                }
+            } catch {
+                print("Online match load failed: \(error.localizedDescription)")
+                waitingForOpponent = false
+                path.removeAll()
+            }
+        }
     }
 }

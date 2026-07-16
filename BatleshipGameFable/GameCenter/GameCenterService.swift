@@ -1,0 +1,151 @@
+import GameKit
+import Observation
+import SwiftUI
+import BathtubEngine
+
+/// Game Center glue: authentication, the matchmaker sheet, and routing of
+/// turn events to the per-match controller.
+@Observable @MainActor
+final class GameCenterService: NSObject {
+    static let shared = GameCenterService()
+
+    private(set) var isAuthenticated = false
+    /// Live matches by matchID (Route carries only the ID; GKTurnBasedMatch isn't Hashable-friendly).
+    private(set) var matches: [String: GKTurnBasedMatch] = [:]
+    /// Active turn controllers by matchID.
+    private(set) var controllers: [String: GameCenterController] = [:]
+    /// Set when a turn event arrives for a match the user isn't currently viewing.
+    var pendingMatchID: String?
+
+    func authenticate() {
+        GKLocalPlayer.local.authenticateHandler = { [weak self] viewController, error in
+            guard let self else { return }
+            if let viewController {
+                Self.topViewController()?.present(viewController, animated: true)
+                return
+            }
+            isAuthenticated = GKLocalPlayer.local.isAuthenticated
+            if isAuthenticated {
+                GKLocalPlayer.local.register(self)
+            }
+            if let error {
+                print("Game Center auth: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    func register(_ match: GKTurnBasedMatch) {
+        matches[match.matchID] = match
+    }
+
+    func controller(for matchID: String) -> GameCenterController? {
+        controllers[matchID]
+    }
+
+    func makeController(for match: GKTurnBasedMatch, localPlayer: PlayerID) -> GameCenterController {
+        let controller = GameCenterController(match: match, localPlayer: localPlayer)
+        controllers[match.matchID] = controller
+        return controller
+    }
+
+    func releaseController(for matchID: String) {
+        controllers[matchID] = nil
+    }
+
+    /// Which engine seat the local player occupies in this match.
+    func localSeat(in match: GKTurnBasedMatch) -> PlayerID {
+        let index = match.participants.firstIndex {
+            $0.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID
+        } ?? 0
+        return MatchDataCodec.player(forParticipantIndex: index)
+    }
+
+    private static func topViewController() -> UIViewController? {
+        let scene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }
+        var top = scene?.keyWindow?.rootViewController
+        while let presented = top?.presentedViewController {
+            top = presented
+        }
+        return top
+    }
+}
+
+// MARK: - Turn events
+
+extension GameCenterService: GKLocalPlayerListener {
+    nonisolated func player(_ player: GKPlayer, receivedTurnEventFor match: GKTurnBasedMatch, didBecomeActive: Bool) {
+        Task { @MainActor in
+            register(match)
+            if let controller = controllers[match.matchID] {
+                controller.handleTurnEvent(match)
+            } else if didBecomeActive {
+                // User tapped a Game Center notification — surface the match.
+                pendingMatchID = match.matchID
+            }
+        }
+    }
+
+    nonisolated func player(_ player: GKPlayer, matchEnded match: GKTurnBasedMatch) {
+        Task { @MainActor in
+            register(match)
+            controllers[match.matchID]?.handleTurnEvent(match)
+        }
+    }
+}
+
+// MARK: - Matchmaker sheet
+
+/// Wraps GKTurnBasedMatchmakerViewController; calls back with the chosen match.
+struct MatchmakerSheet: UIViewControllerRepresentable {
+    let onMatch: (GKTurnBasedMatch) -> Void
+    let onCancel: () -> Void
+
+    func makeUIViewController(context: Context) -> GKTurnBasedMatchmakerViewController {
+        let request = GKMatchRequest()
+        request.minPlayers = 2
+        request.maxPlayers = 2
+        let controller = GKTurnBasedMatchmakerViewController(matchRequest: request)
+        controller.turnBasedMatchmakerDelegate = context.coordinator
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: GKTurnBasedMatchmakerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onMatch: onMatch, onCancel: onCancel)
+    }
+
+    final class Coordinator: NSObject, GKTurnBasedMatchmakerViewControllerDelegate {
+        let onMatch: (GKTurnBasedMatch) -> Void
+        let onCancel: () -> Void
+
+        init(onMatch: @escaping (GKTurnBasedMatch) -> Void, onCancel: @escaping () -> Void) {
+            self.onMatch = onMatch
+            self.onCancel = onCancel
+        }
+
+        func turnBasedMatchmakerViewController(
+            _ viewController: GKTurnBasedMatchmakerViewController,
+            didFind match: GKTurnBasedMatch
+        ) {
+            viewController.dismiss(animated: true)
+            onMatch(match)
+        }
+
+        func turnBasedMatchmakerViewControllerWasCancelled(_ viewController: GKTurnBasedMatchmakerViewController) {
+            viewController.dismiss(animated: true)
+            onCancel()
+        }
+
+        func turnBasedMatchmakerViewController(
+            _ viewController: GKTurnBasedMatchmakerViewController,
+            didFailWithError error: Error
+        ) {
+            print("Matchmaker error: \(error.localizedDescription)")
+            viewController.dismiss(animated: true)
+            onCancel()
+        }
+    }
+}
