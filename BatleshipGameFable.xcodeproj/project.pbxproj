@@ -100,11 +100,11 @@
 			);
 			mainGroup = 2334E08D300888030025490E;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
-			productRefGroup = 2334E097300888030025490E /* Products */;
 			packageReferences = (
 				BE00000000000000000000A2 /* XCLocalSwiftPackageReference "Packages/BathtubEngine" */,
 			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 2334E097300888030025490E /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
