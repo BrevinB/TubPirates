@@ -120,6 +120,16 @@ final class MatchViewModel {
     }
 
     init(config: MatchConfig) {
+        // Resume a locally saved battle when asked (and one actually exists).
+        if config.resume, let saved = MatchSaveStore.load() {
+            mode = saved.mode == .ai ? .ai : .passAndPlay
+            fixedLocalPlayer = .one
+            state = saved.state
+            activePlayer = saved.state.currentPlayer
+            opponent = saved.mode == .ai ? AIOpponentController() : nil
+            return
+        }
+
         mode = config.mode
         fixedLocalPlayer = .one
         var rng = SystemRandomNumberGenerator()
@@ -159,11 +169,41 @@ final class MatchViewModel {
 
     /// Called once the scene is wired up; kicks off auto-play when enabled.
     func matchDidStart() {
+        saveIfNeeded()
         schedulePlayerAutoMoveIfNeeded()
-        // Rejoining an online match on the opponent's turn: start listening.
-        if case .gameCenter = mode, state.currentPlayer != localPlayer, state.phase == .active {
-            Task { await awaitOpponentMove() }
+        switch mode {
+        case .passAndPlay:
+            // Resuming (or starting) pass-and-play opens on the privacy cover
+            // so the right captain takes the device.
+            if state.phase == .active, !state.moveLog.isEmpty {
+                turnState = .awaitingHandoff(next: state.currentPlayer)
+            }
+        case .ai, .gameCenter:
+            // Rejoining on the opponent's turn: start listening/thinking.
+            if state.currentPlayer != localPlayer, state.phase == .active {
+                Task { await awaitOpponentMove() }
+            }
         }
+    }
+
+    /// Persists AI and pass-and-play battles so leaving mid-match isn't fatal.
+    private func saveIfNeeded() {
+        let savedMode: SavedMatch.SavedMode
+        switch mode {
+        case .ai: savedMode = .ai
+        case .passAndPlay: savedMode = .passAndPlay
+        case .gameCenter: return // lives on Game Center's servers
+        }
+        guard state.phase == .active else {
+            MatchSaveStore.clear()
+            return
+        }
+        MatchSaveStore.save(SavedMatch(
+            mode: savedMode,
+            state: state,
+            activePlayer: activePlayer,
+            loadout: Set(state.availableShots(for: .one))
+        ))
     }
 
     // MARK: - Shot panel
@@ -248,6 +288,8 @@ final class MatchViewModel {
            let controller = opponent as? GameCenterController {
             try? await controller.submitLocalTurn(state: state)
         }
+
+        saveIfNeeded()
 
         if let winner = resolution.winner {
             turnState = .finished(winner: winner)

@@ -14,6 +14,11 @@ final class ProfileStore {
         if let data = defaults.data(forKey: PlayerProfile.saveKey),
            let decoded = try? JSONDecoder().decode(PlayerProfile.self, from: data) {
             profile = decoded
+            // Migration: profiles created before starter shots existed get them too.
+            if !profile.unlockedShots.isSuperset(of: PlayerProfile.starterShots) {
+                profile.unlockedShots.formUnion(PlayerProfile.starterShots)
+                save()
+            }
         } else {
             profile = PlayerProfile()
         }

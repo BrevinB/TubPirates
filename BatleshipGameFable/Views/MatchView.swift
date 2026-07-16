@@ -28,6 +28,7 @@ private struct MatchContentView: View {
     @State private var rewardApplied = false
     @State private var waitingForOpponent = false
     @State private var showHandoff = false
+    @State private var confirmLeave = false
 
     var body: some View {
         ZStack {
@@ -111,11 +112,14 @@ private struct MatchContentView: View {
     private func hud(_ viewModel: MatchViewModel) -> some View {
         VStack {
             HStack(alignment: .top) {
-                PlayerHUDView(
-                    imageName: "portrait_dogbeard",
-                    name: viewModel.displayName(for: .two),
-                    highlighted: viewModel.highlightedPlayer == .two
-                )
+                VStack(spacing: 8) {
+                    PlayerHUDView(
+                        imageName: "portrait_dogbeard",
+                        name: viewModel.displayName(for: .two),
+                        highlighted: viewModel.highlightedPlayer == .two
+                    )
+                    leaveButton(viewModel)
+                }
                 Spacer()
                 statusBanner(viewModel)
                 Spacer()
@@ -135,6 +139,33 @@ private struct MatchContentView: View {
                     .padding(.trailing, 6)
             }
             .padding(.bottom, 40)
+        }
+    }
+
+    private func leaveButton(_ viewModel: MatchViewModel) -> some View {
+        Button {
+            confirmLeave = true
+        } label: {
+            Label("Leave", systemImage: "rectangle.portrait.and.arrow.right")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(.black.opacity(0.4), in: Capsule())
+        }
+        .confirmationDialog(
+            "Leave the battle?",
+            isPresented: $confirmLeave,
+            titleVisibility: .visible
+        ) {
+            Button("Leave") { path.removeAll() }
+            Button("Keep Fighting", role: .cancel) {}
+        } message: {
+            if case .gameCenter = viewModel.mode {
+                Text("You can rejoin any time from Online Battle.")
+            } else {
+                Text("Your battle is saved — resume it from the main menu.")
+            }
         }
     }
 

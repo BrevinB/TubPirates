@@ -48,6 +48,7 @@ struct RootView: View {
                 case "placement": path = [.placement(MatchConfig(mode: .ai))]
                 case "armory": path = [.armory]
                 case "settings": path = [.settings]
+                case "resume": path = [.match(MatchConfig(mode: .ai, resume: true))]
                 default: break
                 }
             }

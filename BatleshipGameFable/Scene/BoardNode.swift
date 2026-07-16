@@ -137,11 +137,11 @@ final class BoardNode: SKNode {
         let texture = SKTexture(imageNamed: Self.textureNames[ship.kind] ?? "ship_2")
         let sprite = SKSpriteNode(texture: texture)
 
-        // Fit within length×1 cells, preserving the art's aspect ratio.
-        let targetLength = CGFloat(ship.kind.length) * tileSize * 0.96
-        let targetBreadth = tileSize * 1.02
-        let scale = min(targetLength / texture.size().width, targetBreadth / texture.size().height)
-        sprite.size = CGSize(width: texture.size().width * scale, height: texture.size().height * scale)
+        // Span the full footprint so ships honestly read as N cells long;
+        // breadth keeps the art's aspect, capped just past one cell.
+        let targetLength = CGFloat(ship.kind.length) * tileSize * 0.98
+        let naturalBreadth = texture.size().height * (targetLength / texture.size().width)
+        sprite.size = CGSize(width: targetLength, height: min(naturalBreadth, tileSize * 1.2))
 
         // Midpoint of first and last occupied cell.
         let first = position(of: ship.cells.first!)

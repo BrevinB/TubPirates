@@ -121,14 +121,16 @@ struct PlacementView: View {
                     }
                 }
 
-                // Placed ships
+                // Placed ships: framed horizontally at their true footprint,
+                // then rotated — so vertical ships lie along their cells.
                 ForEach(board.ships) { ship in
-                    shipImage(ship.kind)
-                        .rotationEffect(ship.orientation == .horizontal ? .zero : .degrees(90))
+                    Image(Self.shipImages[ship.kind] ?? "ship_2")
+                        .resizable()
                         .frame(
-                            width: ship.orientation == .horizontal ? cellSize * CGFloat(ship.kind.length) : cellSize,
-                            height: ship.orientation == .horizontal ? cellSize : cellSize * CGFloat(ship.kind.length)
+                            width: cellSize * CGFloat(ship.kind.length) * 0.98,
+                            height: cellSize * 0.95
                         )
+                        .rotationEffect(ship.orientation == .horizontal ? .zero : .degrees(90))
                         .position(shipCenter(ship, cellSize: cellSize))
                         .opacity(liftedShip?.id == ship.id ? 0.25 : 1)
                         .onTapGesture { rotate(ship) }

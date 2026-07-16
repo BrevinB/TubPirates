@@ -13,6 +13,8 @@ struct MatchConfig: Hashable {
     var playerBoard: Board?
     /// Shot types the player brings into battle (from the profile's unlocks).
     var loadout: Set<ShotType> = [.cannon]
+    /// Restore the match saved in MatchSaveStore instead of starting fresh.
+    var resume: Bool = false
 }
 
 /// Supplies the non-local player's moves (AI locally, Game Center online).

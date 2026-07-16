@@ -4,6 +4,7 @@ struct SettingsView: View {
     @Binding var path: [Route]
     @Environment(ProfileStore.self) private var profileStore
     @AppStorage("hapticsEnabled") private var hapticsEnabled = true
+    @AppStorage("debugAllShots") private var debugAllShots = false
     @State private var confirmReset = false
 
     var body: some View {
@@ -11,6 +12,16 @@ struct SettingsView: View {
             Section("Feel") {
                 Toggle("Haptics", isOn: $hapticsEnabled)
             }
+
+            #if DEBUG
+            Section {
+                Toggle("Unlock every cannon", isOn: $debugAllShots)
+            } header: {
+                Text("Developer")
+            } footer: {
+                Text("Battles start with all special shots regardless of Armory unlocks. Debug builds only.")
+            }
+            #endif
 
             Section("Record") {
                 LabeledContent("Wins", value: "\(profileStore.profile.wins)")
