@@ -27,6 +27,7 @@ private struct MatchContentView: View {
     @State private var showEndScreen = false
     @State private var rewardApplied = false
     @State private var waitingForOpponent = false
+    @State private var showHandoff = false
 
     var body: some View {
         ZStack {
@@ -41,7 +42,7 @@ private struct MatchContentView: View {
                 hud(viewModel)
 
                 // Pass-and-play privacy cover (opaque; boards already swapped beneath it).
-                if case .awaitingHandoff(let next) = viewModel.turnState {
+                if showHandoff, case .awaitingHandoff(let next) = viewModel.turnState {
                     PassDeviceView(incomingName: viewModel.displayName(for: next)) {
                         viewModel.confirmHandoff()
                     }
@@ -66,10 +67,18 @@ private struct MatchContentView: View {
                 .padding()
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: viewModel?.turnState)
         .toolbarVisibility(.hidden, for: .navigationBar)
         .onAppear(perform: startMatchIfNeeded)
         .onChange(of: viewModel?.turnState) { _, newState in
+            // Animate only the handoff cover — a whole-ZStack animation would
+            // crossfade the status banner text into a ghosting mess.
+            withAnimation(.easeInOut(duration: 0.25)) {
+                if case .awaitingHandoff = newState {
+                    showHandoff = true
+                } else {
+                    showHandoff = false
+                }
+            }
             if case .finished = newState {
                 if let viewModel, !rewardApplied {
                     rewardApplied = true

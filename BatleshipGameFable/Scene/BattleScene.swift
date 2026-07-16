@@ -40,13 +40,14 @@ final class BattleScene: SKScene, BattleSceneRendering {
         }
         background.position = CGPoint(x: w / 2, y: h / 2)
 
-        // Enemy board: large diamond in the upper water.
-        enemyBoard.setScale(w * 0.98 / BoardNode.baseDiagonal)
-        enemyBoard.position = CGPoint(x: w / 2, y: h * 0.615)
+        // Enemy board: large diamond kept inside the tub's water circle —
+        // sized and lowered toward the circle's center so the tips stay wet.
+        enemyBoard.setScale(w * 0.82 / BoardNode.baseDiagonal)
+        enemyBoard.position = CGPoint(x: w / 2, y: h * 0.575)
 
         // Own board: small diamond at the bottom of the tub, nudged left of the shot panel.
-        ownBoard.setScale(w * 0.40 / BoardNode.baseDiagonal)
-        ownBoard.position = CGPoint(x: w * 0.42, y: h * 0.175)
+        ownBoard.setScale(w * 0.38 / BoardNode.baseDiagonal)
+        ownBoard.position = CGPoint(x: w * 0.42, y: h * 0.21)
     }
 
     // MARK: - BattleSceneRendering
