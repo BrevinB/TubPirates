@@ -7,6 +7,10 @@ struct MatchConfig: Hashable {
     }
 
     var mode: Mode = .ai
+    /// The player's placed fleet; nil = random placement.
+    var playerBoard: Board?
+    /// Shot types the player brings into battle (from the profile's unlocks).
+    var loadout: Set<ShotType> = [.cannon]
 }
 
 /// Supplies the non-local player's moves. AI now; pass-and-play and

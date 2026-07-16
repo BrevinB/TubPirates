@@ -35,11 +35,7 @@ private struct MatchContentView: View {
             }
 
             if let viewModel {
-                VStack {
-                    statusBanner(viewModel)
-                    Spacer()
-                }
-                .padding(.top, 8)
+                hud(viewModel)
             }
         }
         .toolbarVisibility(.hidden, for: .navigationBar)
@@ -66,21 +62,53 @@ private struct MatchContentView: View {
         }
     }
 
+    private func hud(_ viewModel: MatchViewModel) -> some View {
+        VStack {
+            HStack(alignment: .top) {
+                PlayerHUDView(
+                    imageName: "portrait_dogbeard",
+                    name: "Dogbeard",
+                    highlighted: viewModel.turnState == .opponentThinking
+                        || viewModel.turnState == .resolvingOpponentShot
+                )
+                Spacer()
+                statusBanner(viewModel)
+                Spacer()
+                PlayerHUDView(
+                    imageName: "portrait_player",
+                    name: "You",
+                    highlighted: viewModel.turnState == .playerTargeting
+                )
+            }
+            .padding(.horizontal, 12)
+
+            Spacer()
+
+            HStack {
+                Spacer()
+                ShotPanelView(viewModel: viewModel)
+                    .padding(.trailing, 6)
+            }
+            .padding(.bottom, 40)
+        }
+    }
+
     private func statusBanner(_ viewModel: MatchViewModel) -> some View {
         Text(viewModel.statusText)
-            .font(.title3.weight(.bold))
+            .font(.system(size: 15, weight: .heavy, design: .rounded))
             .foregroundStyle(.white)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
-            .background(.black.opacity(0.35), in: Capsule())
-            .animation(.default, value: viewModel.turnState)
+            .lineLimit(2)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(.black.opacity(0.4), in: Capsule())
     }
 
     private func startMatchIfNeeded() {
         guard viewModel == nil else { return }
         let newViewModel = MatchViewModel(config: config)
-        let newScene = BattleScene(size: BattleScene.designSize)
-        newScene.scaleMode = .aspectFill
+        let newScene = BattleScene()
+        newScene.scaleMode = .resizeFill
         newScene.viewModel = newViewModel
         newViewModel.renderer = newScene
         viewModel = newViewModel

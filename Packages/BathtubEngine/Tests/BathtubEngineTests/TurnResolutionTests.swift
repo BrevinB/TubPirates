@@ -121,6 +121,9 @@ struct TurnResolutionTests {
         // Deterministic: least-known ship, tie by origin — both ships unknown,
         // galleon origin (0,0) < dinghy origin (9,8).
         #expect(ship.kind == .galleon)
+        // The fully revealed ship is exposed through the attacker view.
+        let view = state.attackerView(of: .two)
+        #expect(view.revealedShips.map(\.id) == [ship.id])
     }
 
     @Test func validationErrors() {

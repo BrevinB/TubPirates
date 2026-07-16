@@ -1,5 +1,5 @@
 /// One player's side of the tub: their fleet plus everything the enemy has done to it.
-public struct Board: Codable, Sendable, Equatable {
+public struct Board: Codable, Sendable, Hashable {
     public static let size = 10
 
     public private(set) var ships: [Ship]

@@ -63,7 +63,10 @@ public struct GameState: Codable, Sendable {
             shotResults: results,
             revealedShipCells: board.revealedCells.intersection(shipCells),
             revealedWaterCells: board.revealedCells.subtracting(shipCells),
-            sunkShips: board.sunkShips
+            sunkShips: board.sunkShips,
+            revealedShips: board.ships.filter { ship in
+                !board.isSunk(ship) && ship.cells.allSatisfy(board.revealedCells.contains)
+            }
         )
     }
 

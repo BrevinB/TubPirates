@@ -10,17 +10,22 @@ public struct AttackerView: Codable, Sendable {
     public let revealedWaterCells: Set<Coordinate>
     /// Fully sunk enemy ships (their kind and position are public once sunk).
     public let sunkShips: [Ship]
+    /// Un-sunk enemy ships whose full location is known (flare intel) —
+    /// every cell revealed, so kind and position are legitimately visible.
+    public let revealedShips: [Ship]
 
     public init(
         shotResults: [Coordinate: CellOutcome],
         revealedShipCells: Set<Coordinate>,
         revealedWaterCells: Set<Coordinate>,
-        sunkShips: [Ship]
+        sunkShips: [Ship],
+        revealedShips: [Ship] = []
     ) {
         self.shotResults = shotResults
         self.revealedShipCells = revealedShipCells
         self.revealedWaterCells = revealedWaterCells
         self.sunkShips = sunkShips
+        self.revealedShips = revealedShips
     }
 
     public func isTried(_ coordinate: Coordinate) -> Bool {

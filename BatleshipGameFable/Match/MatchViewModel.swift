@@ -55,14 +55,23 @@ final class MatchViewModel {
         }
     }
 
+    /// Coins earned by the local player for this match's result.
+    var coinReward: Int {
+        guard case .finished(let winner) = turnState else { return 0 }
+        return winner == localPlayer ? 200 + 10 * ownBoard.survivingShipCellCount : 25
+    }
+
     init(config: MatchConfig) {
         var rng = SystemRandomNumberGenerator()
         let boards: [PlayerID: Board] = [
-            .one: Board.randomlyPlaced(using: &rng),
+            .one: config.playerBoard ?? Board.randomlyPlaced(using: &rng),
             .two: Board.randomlyPlaced(using: &rng),
         ]
-        // M2: cannon-only loadouts. Unlocked specials arrive with the armory milestone.
-        state = GameState(boards: boards, loadouts: [.one: [], .two: []])
+        // Dogbeard always sails fully armed; the player brings their unlocked arsenal.
+        state = GameState(boards: boards, loadouts: [
+            .one: config.loadout,
+            .two: Set(ShotType.allCases),
+        ])
         opponent = AIOpponentController(
             thinkDelay: CommandLine.arguments.contains("-autoBattle") ? .milliseconds(80) : .milliseconds(900)
         )
@@ -73,7 +82,51 @@ final class MatchViewModel {
         schedulePlayerAutoMoveIfNeeded()
     }
 
+    // MARK: - Shot panel
+
+    /// The panel's fixed display order with live remaining-use counts (nil = unlimited).
+    var shotsForPanel: [(shot: ShotType, remaining: Int?)] {
+        [.cannon, .parrotScout, .bigShot, .flare, .chainShot, .fireworks].map {
+            ($0, state.remainingUses(of: $0, for: localPlayer))
+        }
+    }
+
+    func select(_ shot: ShotType) {
+        guard turnState == .playerTargeting else { return }
+        guard state.remainingUses(of: shot, for: localPlayer) ?? 1 > 0 else { return }
+        selectedShot = shot
+    }
+
+    func toggleOrientation() {
+        selectedOrientation = selectedOrientation.toggled
+    }
+
+    /// Fires the untargeted flare (the view confirms before calling this).
+    func fireFlare() {
+        guard turnState == .playerTargeting else { return }
+        selectedShot = .cannon // flare resolves immediately; drop back to the cannon
+        let move = Move(player: localPlayer, shot: .flare)
+        guard state.validate(move) == nil else { return }
+        turnState = .resolvingPlayerShot
+        Task { await resolveAndContinue(move) }
+    }
+
     // MARK: - Input
+
+    /// Footprint of the currently selected shot at a candidate target cell.
+    func previewFootprint(at cell: Coordinate) -> [Coordinate] {
+        selectedShot.spec.pattern(cell, selectedOrientation)
+    }
+
+    func isValidTarget(_ cell: Coordinate) -> Bool {
+        let move = Move(
+            player: localPlayer,
+            shot: selectedShot,
+            target: cell,
+            orientation: selectedShot.spec.needsOrientation ? selectedOrientation : nil
+        )
+        return state.validate(move) == nil
+    }
 
     /// Called by the scene when the player taps a cell on the enemy board.
     func handleTap(at cell: Coordinate) {
@@ -110,6 +163,10 @@ final class MatchViewModel {
         }
 
         if state.currentPlayer == localPlayer {
+            // A spent special can't stay selected.
+            if state.remainingUses(of: selectedShot, for: localPlayer) == 0 {
+                selectedShot = .cannon
+            }
             turnState = .playerTargeting
             schedulePlayerAutoMoveIfNeeded()
         } else {

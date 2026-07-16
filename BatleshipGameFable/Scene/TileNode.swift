@@ -1,20 +1,18 @@
 import SpriteKit
 import BathtubEngine
 
-/// One grid tile. Placeholder vector look for now — real textures arrive with the art pass.
+/// One grid tile. Ship hulls are drawn by the board's sprite layer;
+/// tiles carry the water color and shot/intel marks.
 final class TileNode: SKSpriteNode {
-    enum Mark {
+    enum Mark: Equatable {
         case none
         case miss
         case hit
         case revealedShip
         case revealedWater
-        case ownShip
-        case ownShipHit
     }
 
-    static let waterColor = SKColor(red: 0.45, green: 0.75, blue: 0.95, alpha: 1)
-    static let shipColor = SKColor(red: 0.55, green: 0.38, blue: 0.23, alpha: 1)
+    static let waterColor = SKColor(red: 0.42, green: 0.72, blue: 0.93, alpha: 0.85)
 
     let cell: Coordinate
     private(set) var mark: Mark = .none
@@ -38,20 +36,15 @@ final class TileNode: SKSpriteNode {
         case .none:
             color = Self.waterColor
         case .miss:
-            color = SKColor(red: 0.85, green: 0.93, blue: 1, alpha: 1)
+            color = SKColor(red: 0.85, green: 0.93, blue: 1, alpha: 0.95)
             addMarkLabel("•", color: .white, scale: 1.4)
         case .hit:
-            color = SKColor(red: 0.85, green: 0.2, blue: 0.15, alpha: 1)
-            addMarkLabel("✕", color: .black)
+            color = SKColor(red: 0.88, green: 0.22, blue: 0.15, alpha: 1)
+            addMarkLabel("✕", color: SKColor(white: 0.1, alpha: 1))
         case .revealedShip:
-            color = SKColor(red: 0.95, green: 0.8, blue: 0.3, alpha: 1)
+            color = SKColor(red: 0.98, green: 0.82, blue: 0.3, alpha: 0.95)
         case .revealedWater:
-            color = SKColor(red: 0.6, green: 0.85, blue: 0.98, alpha: 1)
-        case .ownShip:
-            color = Self.shipColor
-        case .ownShipHit:
-            color = SKColor(red: 0.6, green: 0.15, blue: 0.1, alpha: 1)
-            addMarkLabel("✕", color: .black)
+            color = SKColor(red: 0.62, green: 0.87, blue: 0.99, alpha: 0.9)
         }
     }
 
@@ -62,8 +55,10 @@ final class TileNode: SKSpriteNode {
         label.fontColor = color
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .center
-        // Counter-rotate so the mark reads upright inside the 45°-rotated board.
+        // Counter-rotate so the mark reads upright inside the 45°-rotated board,
+        // and float above the ship sprite layer.
         label.zRotation = -.pi / 4
+        label.zPosition = 5
         addChild(label)
         markNode = label
     }
