@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		BE00000000000000000000A1 /* BathtubEngine in Frameworks */ = {isa = PBXBuildFile; productRef = BE00000000000000000000A3 /* BathtubEngine */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		2334E096300888030025490E /* BatleshipGameFable.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BatleshipGameFable.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BE00000000000000000000A1 /* BathtubEngine in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = BatleshipGameFable;
 			packageProductDependencies = (
+				BE00000000000000000000A3 /* BathtubEngine */,
 			);
 			productName = BatleshipGameFable;
 			productReference = 2334E096300888030025490E /* BatleshipGameFable.app */;
@@ -96,6 +102,9 @@
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2334E097300888030025490E /* Products */;
+			packageReferences = (
+				BE00000000000000000000A2 /* XCLocalSwiftPackageReference "Packages/BathtubEngine" */,
+			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -351,6 +360,20 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		BE00000000000000000000A2 /* XCLocalSwiftPackageReference "Packages/BathtubEngine" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/BathtubEngine;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		BE00000000000000000000A3 /* BathtubEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = BathtubEngine;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 2334E08E300888030025490E /* Project object */;
 }
