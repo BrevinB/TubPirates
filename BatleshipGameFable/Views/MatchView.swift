@@ -104,10 +104,11 @@ private struct MatchContentView: View {
         }
         .fullScreenCover(isPresented: $showEndScreen) {
             if let viewModel {
+                let duo = endPortraits(viewModel)
                 MatchEndView(
                     didWin: viewModel.didWin,
-                    winnerImageName: viewModel.mode == .passAndPlay ? "portrait_player" : profileStore.avatarID,
-                    loserImageName: viewModel.enemyPortrait,
+                    winner: duo.winner,
+                    loser: duo.loser,
                     title: viewModel.endTitle,
                     message: viewModel.endMessage,
                     coinReward: finalReward,
@@ -123,6 +124,23 @@ private struct MatchContentView: View {
                 )
             }
         }
+    }
+
+    /// Who gloats and who sulks on the end screen. Captains use their
+    /// dedicated sad/gloat art; player avatars get the rendered treatment.
+    private func endPortraits(_ viewModel: MatchViewModel) -> (winner: EndPortrait, loser: EndPortrait) {
+        let playerImage = viewModel.mode == .passAndPlay ? "portrait_player" : profileStore.avatarID
+        if viewModel.mode == .passAndPlay {
+            // Both captains are humans sharing the generic portrait.
+            return (EndPortrait(imageName: playerImage),
+                    EndPortrait(imageName: playerImage, renderSad: true))
+        }
+        if viewModel.didWin {
+            return (EndPortrait(imageName: playerImage),
+                    EndPortrait(imageName: viewModel.captain.sadPortrait))
+        }
+        return (EndPortrait(imageName: viewModel.captain.gloatPortrait),
+                EndPortrait(imageName: playerImage, renderSad: true))
     }
 
     private func hud(_ viewModel: MatchViewModel) -> some View {

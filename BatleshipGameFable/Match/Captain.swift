@@ -48,6 +48,11 @@ struct Captain: Identifiable, Equatable {
     var tier: Int {
         (Self.roster.firstIndex(of: self) ?? 0) + 1
     }
+
+    /// Defeated-and-teary portrait variant (shown when the player wins).
+    var sadPortrait: String { portrait + "_sad" }
+    /// Smug victory portrait variant (shown when the captain wins).
+    var gloatPortrait: String { portrait + "_gloat" }
 }
 
 // MARK: - The roster

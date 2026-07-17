@@ -1,9 +1,16 @@
 import SwiftUI
 
+/// One side of the end-screen duo. Captains have dedicated sad/gloat art;
+/// player avatars get a rendered "soggy loser" treatment instead.
+struct EndPortrait: Equatable {
+    let imageName: String
+    var renderSad: Bool = false
+}
+
 struct MatchEndView: View {
     let didWin: Bool
-    var winnerImageName: String = "portrait_player"
-    var loserImageName: String = "portrait_dogbeard"
+    var winner: EndPortrait = EndPortrait(imageName: "portrait_player")
+    var loser: EndPortrait = EndPortrait(imageName: "portrait_dogbeard_sad")
     let title: String
     let message: String
     let coinReward: Int
@@ -12,6 +19,7 @@ struct MatchEndView: View {
     let onExit: () -> Void
 
     @State private var displayedCoins = 0
+    @State private var winnerBounce = false
 
     var body: some View {
         ZStack {
@@ -26,13 +34,22 @@ struct MatchEndView: View {
             VStack(spacing: 28) {
                 Spacer()
 
-                Image(didWin ? winnerImageName : loserImageName)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 120, height: 120)
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
-                    .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(.white.opacity(0.8), lineWidth: 4))
-                    .shadow(radius: 8)
+                // The gloat-and-sulk duo: victor front and center, loser
+                // tucked in behind, tilted and (if no dedicated art) in tears.
+                HStack(alignment: .bottom, spacing: -16) {
+                    portraitCard(winner, size: 134, cornerRadius: 20)
+                        .rotationEffect(.degrees(-3))
+                        .scaleEffect(winnerBounce ? 1.0 : 0.92)
+                        .zIndex(1)
+                    portraitCard(loser, size: 94, cornerRadius: 15)
+                        .rotationEffect(.degrees(9))
+                        .offset(y: 10)
+                }
+                .onAppear {
+                    withAnimation(.spring(duration: 0.5, bounce: 0.55).delay(0.15)) {
+                        winnerBounce = true
+                    }
+                }
 
                 Text(title)
                     .font(.system(size: 48, weight: .heavy, design: .rounded))
@@ -96,6 +113,7 @@ struct MatchEndView: View {
         }
         .task {
             // Count the reward up in steps.
+            try? await Task.sleep(for: .milliseconds(250))
             let steps = 24
             for i in 1...steps {
                 try? await Task.sleep(for: .milliseconds(38))
@@ -104,6 +122,46 @@ struct MatchEndView: View {
                 }
             }
         }
+    }
+
+    /// A portrait card; `renderSad` applies the soggy-loser treatment for
+    /// images that don't have dedicated sad art (player avatars).
+    private func portraitCard(_ portrait: EndPortrait, size: CGFloat, cornerRadius: CGFloat) -> some View {
+        Image(portrait.imageName)
+            .resizable()
+            .scaledToFill()
+            .frame(width: size, height: size)
+            .saturation(portrait.renderSad ? 0.25 : 1)
+            .overlay {
+                if portrait.renderSad {
+                    Color(red: 0.25, green: 0.4, blue: 0.7).opacity(0.25)
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if portrait.renderSad {
+                    // A pair of cartoon tears rolling down.
+                    HStack(spacing: size * 0.3) {
+                        Image(systemName: "drop.fill")
+                            .font(.system(size: size * 0.14))
+                            .foregroundStyle(Color(red: 0.55, green: 0.8, blue: 1))
+                        Image(systemName: "drop.fill")
+                            .font(.system(size: size * 0.11))
+                            .foregroundStyle(Color(red: 0.55, green: 0.8, blue: 1))
+                            .offset(y: -size * 0.08)
+                    }
+                    .offset(y: -size * 0.28)
+                    .shadow(radius: 1)
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .strokeBorder(
+                        portrait.renderSad ? Color(white: 0.7) : .white.opacity(0.85),
+                        lineWidth: size > 100 ? 4 : 3
+                    )
+            )
+            .shadow(radius: size > 100 ? 8 : 4, y: 3)
     }
 }
 
