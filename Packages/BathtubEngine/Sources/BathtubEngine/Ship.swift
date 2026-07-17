@@ -22,7 +22,7 @@ public enum ShipKind: String, Codable, CaseIterable, Sendable {
         case .dinghy: "Dinghy"
         case .tugboat: "Tugboat"
         case .duckSub: "Duck Sub"
-        case .frigate: "Frigate"
+        case .frigate: "Wind-Up Whale"
         case .galleon: "Galleon"
         }
     }

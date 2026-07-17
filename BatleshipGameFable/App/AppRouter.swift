@@ -39,6 +39,10 @@ struct RootView: View {
         .onAppear {
             gameCenter.authenticate()
             let args = CommandLine.arguments
+            // Debug: -avatar <assetID> pre-selects a captain portrait for testing.
+            if let index = args.firstIndex(of: "-avatar"), index + 1 < args.count {
+                profileStore.setAvatar(args[index + 1])
+            }
             if args.contains("-autoBattle") {
                 let mode: MatchConfig.Mode = args.contains("-pnp") ? .passAndPlay : .ai
                 path = [.match(MatchConfig(mode: mode, loadout: Set(ShotType.allCases)))]

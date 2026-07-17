@@ -26,6 +26,12 @@ final class ProfileStore {
 
     var coins: Int { profile.coins }
     var unlockedShots: Set<ShotType> { profile.unlockedShots }
+    var avatarID: String { profile.avatarID }
+
+    func setAvatar(_ id: String) {
+        profile.avatarID = id
+        save()
+    }
 
     func isUnlocked(_ shot: ShotType) -> Bool {
         profile.unlockedShots.contains(shot)

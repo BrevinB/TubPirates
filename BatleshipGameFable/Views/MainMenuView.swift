@@ -7,6 +7,7 @@ struct MainMenuView: View {
     @Environment(ProfileStore.self) private var profileStore
     @State private var gameCenter = GameCenterService.shared
     @State private var showMatchmaker = false
+    @State private var showAvatarPicker = false
     @State private var hasSavedMatch = MatchSaveStore.hasSave
 
     /// Debug builds can force-unlock every cannon from Settings.
@@ -28,6 +29,7 @@ struct MainMenuView: View {
                 HStack {
                     coinChip
                     Spacer()
+                    avatarChip
                     recordChip
                 }
 
@@ -92,6 +94,10 @@ struct MainMenuView: View {
         }
         .toolbarVisibility(.hidden, for: .navigationBar)
         .onAppear { hasSavedMatch = MatchSaveStore.hasSave }
+        .sheet(isPresented: $showAvatarPicker) {
+            AvatarPickerView()
+                .presentationDetents([.medium, .large])
+        }
         .sheet(isPresented: $showMatchmaker) {
             MatchmakerSheet(
                 onMatch: { match in
@@ -133,6 +139,26 @@ struct MainMenuView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .background(.black.opacity(0.3), in: Capsule())
+    }
+
+    private var avatarChip: some View {
+        Button {
+            showAvatarPicker = true
+        } label: {
+            Image(profileStore.avatarID)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 38, height: 38)
+                .clipShape(Circle())
+                .overlay(Circle().strokeBorder(.white.opacity(0.85), lineWidth: 2))
+                .overlay(alignment: .bottomTrailing) {
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.white, .orange)
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Change captain avatar")
     }
 
     private var recordChip: some View {

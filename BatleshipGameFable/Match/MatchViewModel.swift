@@ -41,6 +41,11 @@ final class MatchViewModel {
     private let autoPlay = CommandLine.arguments.contains("-autoBattle")
     private var playerAI = BattleAI()
 
+    /// Dogbeard's current speech-bubble line (AI matches only).
+    private(set) var dogbeardLine: String?
+    private var dialogRNG = SystemRandomNumberGenerator()
+    private var dialogDismissTask: Task<Void, Never>?
+
     /// Drives the end screen's celebratory vs somber styling.
     var didWin: Bool {
         guard case .finished(let winner) = turnState else { return false }
@@ -170,6 +175,9 @@ final class MatchViewModel {
     /// Called once the scene is wired up; kicks off auto-play when enabled.
     func matchDidStart() {
         saveIfNeeded()
+        if mode == .ai, state.moveLog.isEmpty {
+            speak(.matchStart)
+        }
         schedulePlayerAutoMoveIfNeeded()
         switch mode {
         case .passAndPlay:
@@ -281,6 +289,7 @@ final class MatchViewModel {
 
         await renderer?.playResolution(resolution, onEnemyBoard: move.player == localPlayer)
         playHaptics(for: resolution)
+        reactToResolution(resolution)
 
         // Online: our own applied move must reach Game Center before anything else
         // (submitLocalTurn also ends the match when this move won it).
@@ -334,6 +343,40 @@ final class MatchViewModel {
     func confirmHandoff() {
         guard case .awaitingHandoff = turnState else { return }
         turnState = .playerTargeting
+    }
+
+    // MARK: - Dogbeard's table talk
+
+    /// Picks Dogbeard's reaction to a resolved move (AI matches only).
+    private func reactToResolution(_ resolution: MoveResolution) {
+        guard mode == .ai else { return }
+        let isPlayerMove = resolution.move.player == localPlayer
+        let hit = resolution.cellResults.contains { $0.outcome == .hit }
+        let sunk = !resolution.sunkShips.isEmpty
+
+        let event: DogbeardDialog.Event
+        if isPlayerMove {
+            if sunk { event = .playerSunkShip }
+            else if resolution.move.shot != .cannon { event = .playerSpecial }
+            else if hit { event = .playerHit }
+            else { event = .playerMiss }
+        } else {
+            if sunk { event = .dogbeardSunkShip }
+            else if hit { event = .dogbeardHit }
+            else { event = .dogbeardMiss }
+        }
+        speak(event)
+    }
+
+    private func speak(_ event: DogbeardDialog.Event) {
+        guard let line = DogbeardDialog.line(for: event, using: &dialogRNG) else { return }
+        dogbeardLine = line
+        dialogDismissTask?.cancel()
+        dialogDismissTask = Task {
+            try? await Task.sleep(for: .seconds(3.2))
+            guard !Task.isCancelled else { return }
+            dogbeardLine = nil
+        }
     }
 
     private func playHaptics(for resolution: MoveResolution) {

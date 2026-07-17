@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MatchEndView: View {
     let didWin: Bool
+    var winnerImageName: String = "portrait_player"
     let title: String
     let message: String
     let coinReward: Int
@@ -23,7 +24,7 @@ struct MatchEndView: View {
             VStack(spacing: 28) {
                 Spacer()
 
-                Image(didWin ? "portrait_player" : "portrait_dogbeard")
+                Image(didWin ? winnerImageName : "portrait_dogbeard")
                     .resizable()
                     .scaledToFill()
                     .frame(width: 120, height: 120)

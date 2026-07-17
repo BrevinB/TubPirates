@@ -93,6 +93,7 @@ private struct MatchContentView: View {
             if let viewModel {
                 MatchEndView(
                     didWin: viewModel.didWin,
+                    winnerImageName: viewModel.mode == .passAndPlay ? "portrait_player" : profileStore.avatarID,
                     title: viewModel.endTitle,
                     message: viewModel.endMessage,
                     coinReward: viewModel.coinReward,
@@ -112,7 +113,7 @@ private struct MatchContentView: View {
     private func hud(_ viewModel: MatchViewModel) -> some View {
         VStack {
             HStack(alignment: .top) {
-                VStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 8) {
                     PlayerHUDView(
                         imageName: "portrait_dogbeard",
                         name: viewModel.displayName(for: .two),
@@ -120,16 +121,25 @@ private struct MatchContentView: View {
                     )
                     leaveButton(viewModel)
                 }
+                // Bubble floats below the column so it never shifts the HStack layout.
+                .overlay(alignment: .bottomLeading) {
+                    if let line = viewModel.dogbeardLine {
+                        speechBubble(line)
+                            .alignmentGuide(.bottom) { $0[.top] - 10 }
+                            .transition(.scale(scale: 0.6, anchor: .topLeading).combined(with: .opacity))
+                    }
+                }
                 Spacer()
                 statusBanner(viewModel)
                 Spacer()
                 PlayerHUDView(
-                    imageName: "portrait_player",
+                    imageName: viewModel.mode == .passAndPlay ? "portrait_player" : profileStore.avatarID,
                     name: viewModel.displayName(for: .one),
                     highlighted: viewModel.highlightedPlayer == .one
                 )
             }
             .padding(.horizontal, 12)
+            .animation(.spring(duration: 0.3), value: viewModel.dogbeardLine)
 
             Spacer()
 
@@ -140,6 +150,29 @@ private struct MatchContentView: View {
             }
             .padding(.bottom, 40)
         }
+    }
+
+    /// Comic-style speech bubble anchored under Dogbeard's portrait.
+    private func speechBubble(_ line: String) -> some View {
+        Text(line)
+            .font(.system(size: 13, weight: .bold, design: .rounded))
+            .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.05))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .frame(maxWidth: 190, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(red: 1, green: 0.96, blue: 0.85))
+                    .strokeBorder(Color(red: 0.75, green: 0.55, blue: 0.2), lineWidth: 2)
+            )
+            .overlay(alignment: .top) {
+                // Tail pointing up at the portrait.
+                Triangle()
+                    .fill(Color(red: 1, green: 0.96, blue: 0.85))
+                    .frame(width: 16, height: 9)
+                    .offset(x: -50, y: -8)
+            }
+            .accessibilityLabel("Dogbeard says: \(line)")
     }
 
     private func leaveButton(_ viewModel: MatchViewModel) -> some View {
@@ -166,6 +199,17 @@ private struct MatchContentView: View {
             } else {
                 Text("Your battle is saved — resume it from the main menu.")
             }
+        }
+    }
+
+    private struct Triangle: Shape {
+        func path(in rect: CGRect) -> Path {
+            var path = Path()
+            path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+            path.closeSubpath()
+            return path
         }
     }
 
