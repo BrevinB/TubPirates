@@ -234,11 +234,20 @@ private struct MatchContentView: View {
         if case .gameCenter(let matchID) = config.mode {
             startOnlineMatch(matchID)
         } else {
-            attach(MatchViewModel(config: config))
+            var liveConfig = config
+            if config.consumesInventory {
+                // Re-read the stash at match start so rematches can't
+                // resurrect specials that were spent last game.
+                liveConfig.loadout = profileStore.loadoutShots
+            }
+            attach(MatchViewModel(config: liveConfig))
         }
     }
 
     private func attach(_ newViewModel: MatchViewModel) {
+        newViewModel.onLocalSpecialFired = { shot in
+            profileStore.consumeUse(of: shot)
+        }
         let newScene = BattleScene()
         newScene.scaleMode = .resizeFill
         newScene.viewModel = newViewModel

@@ -45,7 +45,13 @@ struct RootView: View {
             }
             if args.contains("-autoBattle") {
                 let mode: MatchConfig.Mode = args.contains("-pnp") ? .passAndPlay : .ai
-                path = [.match(MatchConfig(mode: mode, loadout: Set(ShotType.allCases)))]
+                // -consume: use the real stash + consumable accounting (for testing).
+                let consume = args.contains("-consume")
+                path = [.match(MatchConfig(
+                    mode: mode,
+                    loadout: consume ? profileStore.loadoutShots : Set(ShotType.allCases),
+                    consumesInventory: consume
+                ))]
             } else if let index = args.firstIndex(of: "-screen"), index + 1 < args.count {
                 // Debug deep links for testing: -screen placement|armory|settings
                 switch args[index + 1] {

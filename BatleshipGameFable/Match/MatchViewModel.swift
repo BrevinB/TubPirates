@@ -36,6 +36,9 @@ final class MatchViewModel {
 
     private let opponent: OpponentController?
     weak var renderer: BattleSceneRendering?
+    /// Fired when the local player uses a special (consumable accounting).
+    var onLocalSpecialFired: ((ShotType) -> Void)?
+    private let consumesInventory: Bool
 
     /// Debug/demo: an AI plays the local side too (`-autoBattle` launch argument).
     private let autoPlay = CommandLine.arguments.contains("-autoBattle")
@@ -125,6 +128,7 @@ final class MatchViewModel {
     }
 
     init(config: MatchConfig) {
+        consumesInventory = config.consumesInventory
         // Resume a locally saved battle when asked (and one actually exists).
         if config.resume, let saved = MatchSaveStore.load() {
             mode = saved.mode == .ai ? .ai : .passAndPlay
@@ -166,6 +170,7 @@ final class MatchViewModel {
 
     /// Online matches arrive with a server-synced state and an assigned seat.
     init(gameCenterState: GameState, localPlayer: PlayerID, controller: GameCenterController) {
+        consumesInventory = false
         mode = .gameCenter(matchID: controller.match.matchID)
         fixedLocalPlayer = localPlayer
         state = gameCenterState
@@ -286,6 +291,11 @@ final class MatchViewModel {
         guard let resolution = try? state.apply(move) else {
             turnState = state.currentPlayer == localPlayer ? .playerTargeting : .opponentThinking
             return
+        }
+
+        // Consumable accounting: a fired special is spent the moment it resolves.
+        if consumesInventory, move.player == localPlayer, move.shot != .cannon {
+            onLocalSpecialFired?(move.shot)
         }
 
         await renderer?.playResolution(resolution, onEnemyBoard: move.player == localPlayer)

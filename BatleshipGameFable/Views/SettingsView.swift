@@ -19,7 +19,7 @@ struct SettingsView: View {
             } header: {
                 Text("Developer")
             } footer: {
-                Text("Battles start with all special shots regardless of Armory unlocks. Debug builds only.")
+                Text("Battles start with every special shot armed and nothing is spent from your stash. Debug builds only.")
             }
             #endif
 
@@ -34,7 +34,7 @@ struct SettingsView: View {
                     confirmReset = true
                 }
             } footer: {
-                Text("Clears coins, unlocked cannons, and your battle record.")
+                Text("Clears doubloons, your shot stash, and your battle record.")
             }
         }
         .navigationTitle("Settings")

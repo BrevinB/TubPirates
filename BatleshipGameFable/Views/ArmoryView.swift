@@ -1,7 +1,8 @@
 import SwiftUI
 import BathtubEngine
 
-/// The shop: spend hard-won coins to permanently unlock special cannons.
+/// The shop: spend doubloons on consumable special-shot uses.
+/// Each purchase adds one use to the stash; firing one in battle spends it.
 struct ArmoryView: View {
     @Environment(ProfileStore.self) private var profileStore
 
@@ -20,6 +21,12 @@ struct ArmoryView: View {
 
             ScrollView {
                 VStack(spacing: 14) {
+                    Text("Stock up before battle — every shot you fire is spent from your stash!")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+
                     ForEach(ShotType.purchasable) { shot in
                         shotCard(shot)
                     }
@@ -37,7 +44,7 @@ struct ArmoryView: View {
     }
 
     private func shotCard(_ shot: ShotType) -> some View {
-        let unlocked = profileStore.isUnlocked(shot)
+        let owned = profileStore.inventory(of: shot)
         let affordable = profileStore.coins >= shot.spec.coinCost
 
         return HStack(spacing: 14) {
@@ -46,6 +53,15 @@ struct ArmoryView: View {
                 .scaledToFill()
                 .frame(width: 64, height: 64)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(alignment: .topTrailing) {
+                    Text("×\(owned)")
+                        .font(.system(size: 12, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(owned > 0 ? Color.blue : .gray, in: Capsule())
+                        .offset(x: 8, y: -8)
+                }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(shot.spec.displayName)
@@ -58,28 +74,22 @@ struct ArmoryView: View {
 
             Spacer()
 
-            if unlocked {
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.title2)
-                    .foregroundStyle(.green)
-            } else {
-                Button {
-                    withAnimation {
-                        _ = profileStore.unlock(shot)
-                    }
-                } label: {
-                    VStack(spacing: 2) {
-                        DoubloonLabel(amount: shot.spec.coinCost, fontSize: 14)
-                        Text("Unlock")
-                            .font(.system(size: 11, weight: .bold))
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+            Button {
+                withAnimation {
+                    _ = profileStore.buyUse(of: shot)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(affordable ? .orange : .gray)
-                .disabled(!affordable)
+            } label: {
+                VStack(spacing: 2) {
+                    DoubloonLabel(amount: shot.spec.coinCost, fontSize: 14)
+                    Text("Buy 1")
+                        .font(.system(size: 11, weight: .bold))
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
             }
+            .buttonStyle(.borderedProminent)
+            .tint(affordable ? .orange : .gray)
+            .disabled(!affordable)
         }
         .padding(12)
         .background(

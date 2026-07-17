@@ -14,27 +14,30 @@ final class ProfileStore {
         if let data = defaults.data(forKey: PlayerProfile.saveKey),
            let decoded = try? JSONDecoder().decode(PlayerProfile.self, from: data) {
             profile = decoded
-            // Migration: profiles created before starter shots existed get them too.
-            if !profile.unlockedShots.isSuperset(of: PlayerProfile.starterShots) {
-                profile.unlockedShots.formUnion(PlayerProfile.starterShots)
-                save()
-            }
         } else {
             profile = PlayerProfile()
         }
     }
 
     var coins: Int { profile.coins }
-    var unlockedShots: Set<ShotType> { profile.unlockedShots }
     var avatarID: String { profile.avatarID }
+
+    /// Shots that can go into a battle loadout right now (cannon + stocked specials).
+    var loadoutShots: Set<ShotType> {
+        var shots: Set<ShotType> = [.cannon]
+        for (shot, count) in profile.shotInventory where count > 0 {
+            shots.insert(shot)
+        }
+        return shots
+    }
+
+    func inventory(of shot: ShotType) -> Int {
+        profile.shotInventory[shot] ?? 0
+    }
 
     func setAvatar(_ id: String) {
         profile.avatarID = id
         save()
-    }
-
-    func isUnlocked(_ shot: ShotType) -> Bool {
-        profile.unlockedShots.contains(shot)
     }
 
     func award(coins amount: Int) {
@@ -47,14 +50,21 @@ final class ProfileStore {
         save()
     }
 
-    /// Spends coins to unlock a shot. Returns false when it can't be afforded.
+    /// Buys one use of a shot. Returns false when it can't be afforded.
     @discardableResult
-    func unlock(_ shot: ShotType) -> Bool {
-        guard !isUnlocked(shot), profile.coins >= shot.spec.coinCost else { return false }
+    func buyUse(of shot: ShotType) -> Bool {
+        guard shot.spec.coinCost > 0, profile.coins >= shot.spec.coinCost else { return false }
         profile.coins -= shot.spec.coinCost
-        profile.unlockedShots.insert(shot)
+        profile.shotInventory[shot, default: 0] += 1
         save()
         return true
+    }
+
+    /// Consumes one use after the shot is actually fired in battle.
+    func consumeUse(of shot: ShotType) {
+        guard shot != .cannon, inventory(of: shot) > 0 else { return }
+        profile.shotInventory[shot, default: 0] -= 1
+        save()
     }
 
     func resetProfile() {

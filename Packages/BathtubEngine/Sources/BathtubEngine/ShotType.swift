@@ -23,7 +23,7 @@ public struct ShotSpec: Sendable {
     public let effect: Effect
     /// `nil` means unlimited (the basic cannon).
     public let usesPerMatch: Int?
-    /// 0 means unlocked from the start.
+    /// Price per single use in the Armory; 0 = not purchasable (the basic cannon).
     public let coinCost: Int
     public let needsTarget: Bool
     public let needsOrientation: Bool
@@ -46,7 +46,7 @@ public extension ShotType {
             )
         case .parrotScout:
             ShotSpec(
-                effect: .revealArea, usesPerMatch: 1, coinCost: 400,
+                effect: .revealArea, usesPerMatch: 1, coinCost: 60,
                 needsTarget: true, needsOrientation: false,
                 displayName: "Parrot Scout",
                 blurb: "Use this shot to 'see' all of the ships in a certain area. Causes no damage.",
@@ -58,7 +58,7 @@ public extension ShotType {
             )
         case .bigShot:
             ShotSpec(
-                effect: .damage, usesPerMatch: 1, coinCost: 500,
+                effect: .damage, usesPerMatch: 1, coinCost: 75,
                 needsTarget: true, needsOrientation: false,
                 displayName: "Big Shot Cannon",
                 blurb: "This monster cannon targets four tiles at once.",
@@ -69,7 +69,7 @@ public extension ShotType {
             )
         case .flare:
             ShotSpec(
-                effect: .revealShip, usesPerMatch: 1, coinCost: 600,
+                effect: .revealShip, usesPerMatch: 1, coinCost: 90,
                 needsTarget: false, needsOrientation: false,
                 displayName: "Flare Cannon",
                 blurb: "Use this special cannon shot to reveal your opponent's ship's location.",
@@ -77,7 +77,7 @@ public extension ShotType {
             )
         case .chainShot:
             ShotSpec(
-                effect: .damage, usesPerMatch: 1, coinCost: 650,
+                effect: .damage, usesPerMatch: 1, coinCost: 100,
                 needsTarget: true, needsOrientation: true,
                 displayName: "Chain Shot",
                 blurb: "Linked cannonballs rake three tiles in a row.",
@@ -93,7 +93,7 @@ public extension ShotType {
             )
         case .fireworks:
             ShotSpec(
-                effect: .damage, usesPerMatch: 1, coinCost: 750,
+                effect: .damage, usesPerMatch: 1, coinCost: 125,
                 needsTarget: true, needsOrientation: false,
                 displayName: "Fireworks Cannon",
                 blurb: "This cannon will shoot 5 shots in an X pattern.",
@@ -107,7 +107,7 @@ public extension ShotType {
         }
     }
 
-    /// Shot types purchasable in the Armory, cheapest first.
+    /// Shot types purchasable as consumable uses in the Armory, cheapest first.
     static var purchasable: [ShotType] {
         allCases.filter { $0.spec.coinCost > 0 }.sorted { $0.spec.coinCost < $1.spec.coinCost }
     }

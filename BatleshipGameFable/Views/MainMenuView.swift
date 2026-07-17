@@ -10,11 +10,13 @@ struct MainMenuView: View {
     @State private var showAvatarPicker = false
     @State private var hasSavedMatch = MatchSaveStore.hasSave
 
-    /// Debug builds can force-unlock every cannon from Settings.
-    private var battleLoadout: Set<ShotType> {
+    private var debugAllShots: Bool {
         UserDefaults.standard.bool(forKey: "debugAllShots")
-            ? Set(ShotType.allCases)
-            : profileStore.unlockedShots
+    }
+
+    /// Debug builds can force-arm every cannon from Settings (no consumption).
+    private var battleLoadout: Set<ShotType> {
+        debugAllShots ? Set(ShotType.allCases) : profileStore.loadoutShots
     }
 
     var body: some View {
@@ -58,13 +60,18 @@ struct MainMenuView: View {
                 VStack(spacing: 11) {
                     if hasSavedMatch {
                         menuButton("Resume Battle", icon: "play.fill", tint: .green) {
-                            path.append(.match(MatchConfig(mode: .ai, resume: true)))
+                            path.append(.match(MatchConfig(
+                                mode: .ai,
+                                consumesInventory: !debugAllShots,
+                                resume: true
+                            )))
                         }
                     }
                     menuButton("Battle Dogbeard!", icon: "flag.checkered", tint: .orange) {
                         path.append(.placement(MatchConfig(
                             mode: .ai,
-                            loadout: battleLoadout
+                            loadout: battleLoadout,
+                            consumesInventory: !debugAllShots
                         )))
                     }
                     menuButton("Pass & Play", icon: "person.2.fill", tint: .teal) {
