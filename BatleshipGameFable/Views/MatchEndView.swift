@@ -41,6 +41,7 @@ struct MatchEndView: View {
                     .font(.title3)
                     .foregroundStyle(.white.opacity(0.85))
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 if coinReward > 0 {
                     VStack(spacing: 10) {
