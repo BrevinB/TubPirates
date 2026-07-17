@@ -129,16 +129,11 @@ struct MainMenuView: View {
     }
 
     private var coinChip: some View {
-        HStack(spacing: 6) {
-            Text("🪙")
-            Text("\(profileStore.coins)")
-                .font(.system(size: 18, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white)
-                .contentTransition(.numericText())
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(.black.opacity(0.3), in: Capsule())
+        DoubloonLabel(amount: profileStore.coins)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(.black.opacity(0.3), in: Capsule())
     }
 
     private var avatarChip: some View {

@@ -41,17 +41,20 @@ struct MatchEndView: View {
                     .multilineTextAlignment(.center)
 
                 if coinReward > 0 {
-                    HStack(spacing: 8) {
-                        Text("🪙")
-                            .font(.system(size: 30))
-                        Text("+\(displayedCoins)")
-                            .font(.system(size: 34, weight: .heavy, design: .rounded))
+                    VStack(spacing: 10) {
+                        if didWin {
+                            Image("treasure_chest")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 96)
+                                .shadow(radius: 6, y: 3)
+                        }
+                        DoubloonLabel(amount: displayedCoins, fontSize: 32, prefix: "+")
                             .foregroundStyle(.yellow)
-                            .contentTransition(.numericText(value: Double(displayedCoins)))
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 10)
+                            .background(.black.opacity(0.3), in: Capsule())
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 10)
-                    .background(.black.opacity(0.3), in: Capsule())
                 }
 
                 Spacer()

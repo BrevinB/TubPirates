@@ -31,12 +31,7 @@ struct ArmoryView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: 4) {
-                    Text("🪙")
-                    Text("\(profileStore.coins)")
-                        .font(.system(size: 16, weight: .heavy, design: .rounded))
-                        .contentTransition(.numericText())
-                }
+                DoubloonLabel(amount: profileStore.coins, fontSize: 16)
             }
         }
     }
@@ -74,8 +69,7 @@ struct ArmoryView: View {
                     }
                 } label: {
                     VStack(spacing: 2) {
-                        Text("🪙 \(shot.spec.coinCost)")
-                            .font(.system(size: 14, weight: .heavy, design: .rounded))
+                        DoubloonLabel(amount: shot.spec.coinCost, fontSize: 14)
                         Text("Unlock")
                             .font(.system(size: 11, weight: .bold))
                     }

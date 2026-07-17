@@ -26,7 +26,7 @@ struct SettingsView: View {
             Section("Record") {
                 LabeledContent("Wins", value: "\(profileStore.profile.wins)")
                 LabeledContent("Losses", value: "\(profileStore.profile.losses)")
-                LabeledContent("Coins", value: "\(profileStore.coins)")
+                LabeledContent("Doubloons", value: "\(profileStore.coins)")
             }
 
             Section {
