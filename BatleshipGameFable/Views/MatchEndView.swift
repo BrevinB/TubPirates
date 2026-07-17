@@ -3,9 +3,11 @@ import SwiftUI
 struct MatchEndView: View {
     let didWin: Bool
     var winnerImageName: String = "portrait_player"
+    var loserImageName: String = "portrait_dogbeard"
     let title: String
     let message: String
     let coinReward: Int
+    var firstWinBonus: Bool = false
     let onRematch: () -> Void
     let onExit: () -> Void
 
@@ -24,7 +26,7 @@ struct MatchEndView: View {
             VStack(spacing: 28) {
                 Spacer()
 
-                Image(didWin ? winnerImageName : "portrait_dogbeard")
+                Image(didWin ? winnerImageName : loserImageName)
                     .resizable()
                     .scaledToFill()
                     .frame(width: 120, height: 120)
@@ -48,6 +50,14 @@ struct MatchEndView: View {
                                 .scaledToFit()
                                 .frame(height: 96)
                                 .shadow(radius: 6, y: 3)
+                        }
+                        if firstWinBonus {
+                            Label("First win of the day — 2× loot!", systemImage: "sunrise.fill")
+                                .font(.system(size: 15, weight: .heavy, design: .rounded))
+                                .foregroundStyle(.orange)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 6)
+                                .background(.white.opacity(0.9), in: Capsule())
                         }
                         DoubloonLabel(amount: displayedCoins, fontSize: 32, prefix: "+")
                             .foregroundStyle(.yellow)

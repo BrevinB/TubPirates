@@ -9,6 +9,8 @@ struct MatchConfig: Hashable {
     }
 
     var mode: Mode = .ai
+    /// Which rival captain an AI battle is against.
+    var captainID: String = Captain.dogbeard.id
     /// The player's placed fleet; nil = random placement.
     var playerBoard: Board?
     /// Shot types the player brings into battle (from the profile's stash).

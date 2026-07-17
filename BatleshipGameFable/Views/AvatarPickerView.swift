@@ -4,6 +4,7 @@ import SwiftUI
 struct AvatarPickerView: View {
     @Environment(ProfileStore.self) private var profileStore
     @Environment(\.dismiss) private var dismiss
+    @State private var pendingPurchase: Avatar?
 
     private let columns = [GridItem(.adaptive(minimum: 100), spacing: 16)]
 
@@ -20,8 +21,33 @@ struct AvatarPickerView: View {
             .navigationTitle("Choose Your Captain")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    DoubloonLabel(amount: profileStore.coins, fontSize: 15)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
+                }
+            }
+            .confirmationDialog(
+                pendingPurchase.map { "Buy \($0.name) for \($0.price) doubloons?" } ?? "",
+                isPresented: Binding(
+                    get: { pendingPurchase != nil },
+                    set: { if !$0 { pendingPurchase = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                if let avatar = pendingPurchase {
+                    if profileStore.coins >= avatar.price {
+                        Button("Buy & Equip") {
+                            profileStore.buyAvatar(avatar)
+                            pendingPurchase = nil
+                        }
+                    }
+                    Button("Cancel", role: .cancel) { pendingPurchase = nil }
+                }
+            } message: {
+                if let avatar = pendingPurchase, profileStore.coins < avatar.price {
+                    Text("Ye need \(avatar.price - profileStore.coins) more doubloons. Win battles to earn them!")
                 }
             }
         }
@@ -29,8 +55,15 @@ struct AvatarPickerView: View {
 
     private func avatarCell(_ avatar: Avatar) -> some View {
         let selected = profileStore.avatarID == avatar.id
+        let owned = profileStore.owns(avatar)
+        let affordable = profileStore.coins >= avatar.price
+
         return Button {
-            profileStore.setAvatar(avatar.id)
+            if owned {
+                profileStore.setAvatar(avatar.id)
+            } else {
+                pendingPurchase = avatar
+            }
         } label: {
             VStack(spacing: 6) {
                 Image(avatar.id)
@@ -43,12 +76,30 @@ struct AvatarPickerView: View {
                             .strokeBorder(selected ? Color.orange : .secondary.opacity(0.3),
                                           lineWidth: selected ? 4 : 1.5)
                     )
+                    .saturation(owned ? 1 : 0.55)
                     .overlay(alignment: .bottomTrailing) {
                         if selected {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.title3)
                                 .foregroundStyle(.white, .orange)
                                 .offset(x: 6, y: 6)
+                        }
+                    }
+                    .overlay(alignment: .top) {
+                        if !owned {
+                            HStack(spacing: 3) {
+                                Image("coin_doubloon")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 13, height: 13)
+                                Text("\(avatar.price)")
+                                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(.white)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(affordable ? Color.orange : .gray, in: Capsule())
+                            .offset(y: -8)
                         }
                     }
                 Text(avatar.name)
@@ -60,7 +111,7 @@ struct AvatarPickerView: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(avatar.name)
+        .accessibilityLabel(owned ? avatar.name : "\(avatar.name), \(avatar.price) doubloons")
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

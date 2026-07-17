@@ -1,7 +1,8 @@
+import Foundation
 import BathtubEngine
 
 /// Everything that persists between sessions: the doubloon purse, the
-/// consumable shot stash, chosen avatar, and the captain's record.
+/// consumable shot stash, avatars, ladder progress, and daily-reward claims.
 struct PlayerProfile: Codable, Equatable {
     var coins: Int = 0
     /// Consumable uses owned per special shot. The basic cannon isn't tracked (always free).
@@ -9,6 +10,14 @@ struct PlayerProfile: Codable, Equatable {
     var wins: Int = 0
     var losses: Int = 0
     var avatarID: String = Avatar.defaultID
+    /// Purchased avatar IDs (free avatars aren't tracked — they're always owned).
+    var ownedAvatars: Set<String> = []
+    /// Wins against each rival captain, for ladder progression.
+    var captainWins: [String: Int] = [:]
+    /// When the daily treasure chest was last claimed.
+    var lastDailyChestClaim: Date?
+    /// When the first-win-of-the-day bonus was last granted.
+    var lastFirstWinBonus: Date?
 
     /// A few free uses so new captains learn how special shots work:
     /// intel (Parrot Scout) and damage (Big Shot Cannon).
@@ -26,6 +35,11 @@ struct PlayerProfile: Codable, Equatable {
         wins = try container.decodeIfPresent(Int.self, forKey: .wins) ?? 0
         losses = try container.decodeIfPresent(Int.self, forKey: .losses) ?? 0
         avatarID = try container.decodeIfPresent(String.self, forKey: .avatarID) ?? Avatar.defaultID
+        ownedAvatars = try container.decodeIfPresent(Set<String>.self, forKey: .ownedAvatars) ?? []
+        captainWins = try container.decodeIfPresent([String: Int].self, forKey: .captainWins)
+            ?? [:]
+        lastDailyChestClaim = try container.decodeIfPresent(Date.self, forKey: .lastDailyChestClaim)
+        lastFirstWinBonus = try container.decodeIfPresent(Date.self, forKey: .lastFirstWinBonus)
 
         if let inventory = try container.decodeIfPresent([ShotType: Int].self, forKey: .shotInventory) {
             shotInventory = inventory
@@ -40,6 +54,12 @@ struct PlayerProfile: Codable, Equatable {
                 inventory[shot] = max(inventory[shot] ?? 0, 3)
             }
             shotInventory = inventory
+        }
+
+        // Ladder migration: lifetime wins predate per-captain tracking —
+        // credit them to Dogbeard so veterans aren't re-locked.
+        if captainWins.isEmpty, wins > 0 {
+            captainWins["dogbeard"] = wins
         }
     }
 

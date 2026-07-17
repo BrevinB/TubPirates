@@ -40,13 +40,82 @@ final class ProfileStore {
         save()
     }
 
+    // MARK: - Avatars
+
+    func owns(_ avatar: Avatar) -> Bool {
+        avatar.price == 0 || profile.ownedAvatars.contains(avatar.id)
+    }
+
+    /// Buys a premium avatar. Returns false when unaffordable or already owned.
+    @discardableResult
+    func buyAvatar(_ avatar: Avatar) -> Bool {
+        guard !owns(avatar), profile.coins >= avatar.price else { return false }
+        profile.coins -= avatar.price
+        profile.ownedAvatars.insert(avatar.id)
+        profile.avatarID = avatar.id // equipping your new treasure immediately feels right
+        save()
+        return true
+    }
+
+    // MARK: - Captain ladder
+
+    func wins(against captain: Captain) -> Int {
+        profile.captainWins[captain.id] ?? 0
+    }
+
+    /// A captain is battle-able when every earlier rung has been cleared.
+    func isUnlocked(_ captain: Captain) -> Bool {
+        guard let index = Captain.roster.firstIndex(of: captain) else { return false }
+        return Captain.roster[..<index].allSatisfy {
+            wins(against: $0) >= $0.winsToAdvance
+        }
+    }
+
+    // MARK: - Daily rewards
+
+    var isDailyChestAvailable: Bool {
+        guard let last = profile.lastDailyChestClaim else { return true }
+        return !Calendar.current.isDateInToday(last)
+    }
+
+    /// Claims the daily chest. Returns the doubloons awarded (0 if already claimed).
+    func claimDailyChest() -> Int {
+        guard isDailyChestAvailable else { return 0 }
+        let reward = Int.random(in: 15...30) * 5 // 75...150 in doubloon-y steps
+        profile.lastDailyChestClaim = Date()
+        profile.coins += reward
+        save()
+        return reward
+    }
+
+    /// True when the next AI-battle win doubles its reward.
+    var isFirstWinBonusAvailable: Bool {
+        guard let last = profile.lastFirstWinBonus else { return true }
+        return !Calendar.current.isDateInToday(last)
+    }
+
+    /// Consumes today's first-win bonus. Returns whether it applied.
+    func claimFirstWinBonus() -> Bool {
+        guard isFirstWinBonusAvailable else { return false }
+        profile.lastFirstWinBonus = Date()
+        save()
+        return true
+    }
+
     func award(coins amount: Int) {
         profile.coins += amount
         save()
     }
 
-    func recordResult(won: Bool) {
-        if won { profile.wins += 1 } else { profile.losses += 1 }
+    func recordResult(won: Bool, againstCaptainID: String? = nil) {
+        if won {
+            profile.wins += 1
+            if let id = againstCaptainID {
+                profile.captainWins[id, default: 0] += 1
+            }
+        } else {
+            profile.losses += 1
+        }
         save()
     }
 

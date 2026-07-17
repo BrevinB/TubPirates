@@ -13,6 +13,8 @@ struct SavedMatch: Codable {
     var state: GameState
     var activePlayer: PlayerID
     var loadout: Set<ShotType>
+    /// Which rival the battle is against (optional so pre-ladder saves decode).
+    var captainID: String?
 }
 
 enum MatchSaveStore {

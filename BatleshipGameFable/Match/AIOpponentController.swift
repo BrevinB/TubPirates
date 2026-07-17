@@ -1,16 +1,23 @@
 import BathtubEngine
 
-/// Dogbeard: wraps the engine's BattleAI with a small think delay so his
-/// turns feel deliberate rather than instantaneous.
+/// A rival captain: wraps the engine's BattleAI with that captain's difficulty
+/// dials and a small think delay so turns feel deliberate rather than instantaneous.
 final class AIOpponentController: OpponentController {
     private var ai: BattleAI
     private let player: PlayerID
     private let thinkDelay: Duration
 
-    init(player: PlayerID = .two, seed: UInt64? = nil, thinkDelay: Duration = .milliseconds(900)) {
-        // Dogbeard is beatable: sometimes distracted mid-hunt, a bit stingier
-        // with specials than a perfect player would be.
-        self.ai = BattleAI(seed: seed, specialUseChance: 0.15, sloppiness: 0.18)
+    init(
+        captain: Captain = .dogbeard,
+        player: PlayerID = .two,
+        seed: UInt64? = nil,
+        thinkDelay: Duration = .milliseconds(900)
+    ) {
+        self.ai = BattleAI(
+            seed: seed,
+            specialUseChance: captain.specialUseChance,
+            sloppiness: captain.sloppiness
+        )
         self.player = player
         self.thinkDelay = thinkDelay
     }

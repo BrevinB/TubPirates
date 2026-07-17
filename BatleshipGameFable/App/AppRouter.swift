@@ -2,6 +2,7 @@ import SwiftUI
 import BathtubEngine
 
 enum Route: Hashable {
+    case captains(MatchConfig)
     case placement(MatchConfig)
     case match(MatchConfig)
     case armory
@@ -18,6 +19,8 @@ struct RootView: View {
             MainMenuView(path: $path)
                 .navigationDestination(for: Route.self) { route in
                     switch route {
+                    case .captains(let config):
+                        CaptainsView(baseConfig: config, path: $path)
                     case .placement(let config):
                         PlacementView(config: config, path: $path)
                     case .match(let config):
@@ -47,15 +50,21 @@ struct RootView: View {
                 let mode: MatchConfig.Mode = args.contains("-pnp") ? .passAndPlay : .ai
                 // -consume: use the real stash + consumable accounting (for testing).
                 let consume = args.contains("-consume")
-                path = [.match(MatchConfig(
+                var config = MatchConfig(
                     mode: mode,
                     loadout: consume ? profileStore.loadoutShots : Set(ShotType.allCases),
                     consumesInventory: consume
-                ))]
+                )
+                // -captain <id>: fight a specific ladder rival.
+                if let index = args.firstIndex(of: "-captain"), index + 1 < args.count {
+                    config.captainID = args[index + 1]
+                }
+                path = [.match(config)]
             } else if let index = args.firstIndex(of: "-screen"), index + 1 < args.count {
                 // Debug deep links for testing: -screen placement|armory|settings
                 switch args[index + 1] {
                 case "placement": path = [.placement(MatchConfig(mode: .ai))]
+                case "captains": path = [.captains(MatchConfig(mode: .ai))]
                 case "armory": path = [.armory]
                 case "settings": path = [.settings]
                 case "resume": path = [.match(MatchConfig(mode: .ai, resume: true))]

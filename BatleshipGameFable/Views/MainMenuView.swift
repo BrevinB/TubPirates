@@ -9,6 +9,7 @@ struct MainMenuView: View {
     @State private var showMatchmaker = false
     @State private var showAvatarPicker = false
     @State private var hasSavedMatch = MatchSaveStore.hasSave
+    @State private var claimedChestAmount: Int?
 
     private var debugAllShots: Bool {
         UserDefaults.standard.bool(forKey: "debugAllShots")
@@ -57,6 +58,8 @@ struct MainMenuView: View {
 
                 Spacer(minLength: 8)
 
+                dailyChestCard
+
                 VStack(spacing: 11) {
                     if hasSavedMatch {
                         menuButton("Resume Battle", icon: "play.fill", tint: .green) {
@@ -67,8 +70,8 @@ struct MainMenuView: View {
                             )))
                         }
                     }
-                    menuButton("Battle Dogbeard!", icon: "flag.checkered", tint: .orange) {
-                        path.append(.placement(MatchConfig(
+                    menuButton("Battle!", icon: "flag.checkered", tint: .orange) {
+                        path.append(.captains(MatchConfig(
                             mode: .ai,
                             loadout: battleLoadout,
                             consumesInventory: !debugAllShots
@@ -100,7 +103,12 @@ struct MainMenuView: View {
             .padding()
         }
         .toolbarVisibility(.hidden, for: .navigationBar)
-        .onAppear { hasSavedMatch = MatchSaveStore.hasSave }
+        .onAppear {
+            hasSavedMatch = MatchSaveStore.hasSave
+            if CommandLine.arguments.contains("-showAvatars") {
+                showAvatarPicker = true
+            }
+        }
         .sheet(isPresented: $showAvatarPicker) {
             AvatarPickerView()
                 .presentationDetents([.medium, .large])
@@ -141,6 +149,58 @@ struct MainMenuView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
             .background(.black.opacity(0.3), in: Capsule())
+    }
+
+    /// Once-a-day free treasure. Shows a claim card when available,
+    /// a burst of doubloons right after claiming, nothing otherwise.
+    @ViewBuilder
+    private var dailyChestCard: some View {
+        if let amount = claimedChestAmount {
+            HStack(spacing: 10) {
+                Image("treasure_chest")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 44)
+                DoubloonLabel(amount: amount, fontSize: 22, prefix: "+")
+                    .foregroundStyle(.yellow)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 8)
+            .background(.black.opacity(0.3), in: Capsule())
+            .transition(.scale.combined(with: .opacity))
+        } else if profileStore.isDailyChestAvailable {
+            Button {
+                withAnimation(.spring(duration: 0.4)) {
+                    let amount = profileStore.claimDailyChest()
+                    if amount > 0 { claimedChestAmount = amount }
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    Image("treasure_chest")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 44)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Daily Treasure!")
+                            .font(.system(size: 16, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
+                        Text("Tap to claim yer loot")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.75))
+                    }
+                    Image(systemName: "hand.tap.fill")
+                        .foregroundStyle(.yellow)
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(Color(red: 0.55, green: 0.35, blue: 0.12))
+                        .strokeBorder(Color.yellow.opacity(0.7), lineWidth: 2)
+                )
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     private var avatarChip: some View {

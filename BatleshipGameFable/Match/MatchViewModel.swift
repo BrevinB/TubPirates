@@ -24,6 +24,8 @@ final class MatchViewModel {
     }
 
     let mode: MatchConfig.Mode
+    /// The rival being fought in AI battles (Dogbeard elsewhere, unused).
+    let captain: Captain
     private(set) var state: GameState
     private(set) var turnState: TurnState = .playerTargeting
     /// Whose perspective the boards render from. Fixed in AI mode; swaps in pass-and-play.
@@ -44,8 +46,8 @@ final class MatchViewModel {
     private let autoPlay = CommandLine.arguments.contains("-autoBattle")
     private var playerAI = BattleAI()
 
-    /// Dogbeard's current speech-bubble line (AI matches only).
-    private(set) var dogbeardLine: String?
+    /// The rival captain's current speech-bubble line (AI matches only).
+    private(set) var captainLine: String?
     private var dialogRNG = SystemRandomNumberGenerator()
     private var dialogDismissTask: Task<Void, Never>?
 
@@ -75,10 +77,15 @@ final class MatchViewModel {
 
     func displayName(for player: PlayerID) -> String {
         switch mode {
-        case .ai: player == localPlayer ? "You" : "Dogbeard"
+        case .ai: player == localPlayer ? "You" : captain.name
         case .passAndPlay: player == .one ? "Captain 1" : "Captain 2"
         case .gameCenter: player == localPlayer ? "You" : "Opponent"
         }
+    }
+
+    /// Portrait asset for the enemy card in the HUD.
+    var enemyPortrait: String {
+        mode == .ai ? captain.portrait : "portrait_dogbeard"
     }
 
     var statusText: String {
@@ -86,7 +93,8 @@ final class MatchViewModel {
         case .playerTargeting:
             mode == .passAndPlay ? "\(displayName(for: activePlayer)) — fire!" : "Your turn — fire!"
         case .resolvingPlayerShot: "Firing..."
-        case .opponentThinking: "\(displayName(for: localPlayer.opponent)) is aiming..."
+        case .opponentThinking:
+            mode == .ai ? "\(captain.name) is aiming..." : "\(displayName(for: localPlayer.opponent)) is aiming..."
         case .resolvingOpponentShot: "Incoming!"
         case .awaitingHandoff: "Pass the tub..."
         case .finished(let winner):
@@ -108,8 +116,8 @@ final class MatchViewModel {
         switch mode {
         case .ai:
             return winner == localPlayer
-                ? "Dogbeard's fleet rests at the bottom of the tub."
-                : "Dogbeard cackles as your last ship goes under."
+                ? "\(captain.name)'s fleet rests at the bottom of the tub."
+                : "\(captain.name) cackles as your last ship goes under."
         case .passAndPlay:
             return "\(displayName(for: winner.opponent))'s fleet rests at the bottom of the tub."
         case .gameCenter:
@@ -120,26 +128,31 @@ final class MatchViewModel {
     }
 
     /// Coins earned by the local player for this match's result (not pass-and-play).
+    /// Wins scale with the captain's reward multiplier.
     var coinReward: Int {
         guard mode != .passAndPlay, case .finished(let winner) = turnState else { return 0 }
-        return winner == localPlayer
-            ? 200 + 10 * (state.boards[localPlayer]?.survivingShipCellCount ?? 0)
-            : 25
+        guard winner == localPlayer else { return 25 }
+        let base = 200 + 10 * (state.boards[localPlayer]?.survivingShipCellCount ?? 0)
+        let multiplier = mode == .ai ? captain.rewardMultiplier : 1.0
+        return Int((Double(base) * multiplier).rounded())
     }
 
     init(config: MatchConfig) {
         consumesInventory = config.consumesInventory
         // Resume a locally saved battle when asked (and one actually exists).
         if config.resume, let saved = MatchSaveStore.load() {
+            let savedCaptain = Captain.withID(saved.captainID)
             mode = saved.mode == .ai ? .ai : .passAndPlay
+            captain = savedCaptain
             fixedLocalPlayer = .one
             state = saved.state
             activePlayer = saved.state.currentPlayer
-            opponent = saved.mode == .ai ? AIOpponentController() : nil
+            opponent = saved.mode == .ai ? AIOpponentController(captain: savedCaptain) : nil
             return
         }
 
         mode = config.mode
+        captain = Captain.withID(config.captainID)
         fixedLocalPlayer = .one
         var rng = SystemRandomNumberGenerator()
         let boards: [PlayerID: Board] = [
@@ -148,7 +161,7 @@ final class MatchViewModel {
         ]
         switch config.mode {
         case .ai, .gameCenter:
-            // Dogbeard mirrors the player's arsenal so difficulty scales with
+            // The rival mirrors the player's arsenal so difficulty scales with
             // progression instead of outgunning fresh captains.
             // (.gameCenter never lands here — online matches use init(gameCenterState:...).)
             state = GameState(boards: boards, loadouts: [
@@ -156,6 +169,7 @@ final class MatchViewModel {
                 .two: config.loadout,
             ])
             opponent = AIOpponentController(
+                captain: captain,
                 thinkDelay: CommandLine.arguments.contains("-autoBattle") ? .milliseconds(80) : .milliseconds(900)
             )
         case .passAndPlay:
@@ -171,6 +185,7 @@ final class MatchViewModel {
     /// Online matches arrive with a server-synced state and an assigned seat.
     init(gameCenterState: GameState, localPlayer: PlayerID, controller: GameCenterController) {
         consumesInventory = false
+        captain = .dogbeard // unused online; portraits come from Game Center identities
         mode = .gameCenter(matchID: controller.match.matchID)
         fixedLocalPlayer = localPlayer
         state = gameCenterState
@@ -216,7 +231,8 @@ final class MatchViewModel {
             mode: savedMode,
             state: state,
             activePlayer: activePlayer,
-            loadout: Set(state.availableShots(for: .one))
+            loadout: Set(state.availableShots(for: .one)),
+            captainID: captain.id
         ))
     }
 
@@ -356,37 +372,37 @@ final class MatchViewModel {
         turnState = .playerTargeting
     }
 
-    // MARK: - Dogbeard's table talk
+    // MARK: - Captain table talk
 
-    /// Picks Dogbeard's reaction to a resolved move (AI matches only).
+    /// Picks the rival captain's reaction to a resolved move (AI matches only).
     private func reactToResolution(_ resolution: MoveResolution) {
         guard mode == .ai else { return }
         let isPlayerMove = resolution.move.player == localPlayer
         let hit = resolution.cellResults.contains { $0.outcome == .hit }
         let sunk = !resolution.sunkShips.isEmpty
 
-        let event: DogbeardDialog.Event
+        let event: DialogEvent
         if isPlayerMove {
             if sunk { event = .playerSunkShip }
             else if resolution.move.shot != .cannon { event = .playerSpecial }
             else if hit { event = .playerHit }
             else { event = .playerMiss }
         } else {
-            if sunk { event = .dogbeardSunkShip }
-            else if hit { event = .dogbeardHit }
-            else { event = .dogbeardMiss }
+            if sunk { event = .captainSunkShip }
+            else if hit { event = .captainHit }
+            else { event = .captainMiss }
         }
         speak(event)
     }
 
-    private func speak(_ event: DogbeardDialog.Event) {
-        guard let line = DogbeardDialog.line(for: event, using: &dialogRNG) else { return }
-        dogbeardLine = line
+    private func speak(_ event: DialogEvent) {
+        guard let line = CaptainDialog.line(for: event, from: captain, using: &dialogRNG) else { return }
+        captainLine = line
         dialogDismissTask?.cancel()
         dialogDismissTask = Task {
             try? await Task.sleep(for: .seconds(3.2))
             guard !Task.isCancelled else { return }
-            dogbeardLine = nil
+            captainLine = nil
         }
     }
 

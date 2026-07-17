@@ -29,6 +29,8 @@ private struct MatchContentView: View {
     @State private var waitingForOpponent = false
     @State private var showHandoff = false
     @State private var confirmLeave = false
+    @State private var finalReward = 0
+    @State private var firstWinBonusApplied = false
 
     var body: some View {
         ZStack {
@@ -83,8 +85,19 @@ private struct MatchContentView: View {
             if case .finished = newState {
                 if let viewModel, !rewardApplied {
                     rewardApplied = true
-                    profileStore.award(coins: viewModel.coinReward)
-                    profileStore.recordResult(won: viewModel.didWin)
+                    var reward = viewModel.coinReward
+                    // First AI-battle win each day pays double.
+                    if viewModel.mode == .ai, viewModel.didWin, reward > 0,
+                       profileStore.claimFirstWinBonus() {
+                        reward *= 2
+                        firstWinBonusApplied = true
+                    }
+                    finalReward = reward
+                    profileStore.award(coins: reward)
+                    profileStore.recordResult(
+                        won: viewModel.didWin,
+                        againstCaptainID: viewModel.mode == .ai ? viewModel.captain.id : nil
+                    )
                 }
                 showEndScreen = true
             }
@@ -94,9 +107,11 @@ private struct MatchContentView: View {
                 MatchEndView(
                     didWin: viewModel.didWin,
                     winnerImageName: viewModel.mode == .passAndPlay ? "portrait_player" : profileStore.avatarID,
+                    loserImageName: viewModel.enemyPortrait,
                     title: viewModel.endTitle,
                     message: viewModel.endMessage,
-                    coinReward: viewModel.coinReward,
+                    coinReward: finalReward,
+                    firstWinBonus: firstWinBonusApplied,
                     onRematch: {
                         showEndScreen = false
                         onRematch()
@@ -115,7 +130,7 @@ private struct MatchContentView: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 8) {
                     PlayerHUDView(
-                        imageName: "portrait_dogbeard",
+                        imageName: viewModel.enemyPortrait,
                         name: viewModel.displayName(for: .two),
                         highlighted: viewModel.highlightedPlayer == .two
                     )
@@ -135,7 +150,7 @@ private struct MatchContentView: View {
             // Dogbeard's bubble gets its own row under the HUD — over open water,
             // never covering the portrait, Leave button, or status banner.
             HStack {
-                if let line = viewModel.dogbeardLine {
+                if let line = viewModel.captainLine {
                     speechBubble(line)
                         .id(line) // new line = new view, so texts never crossfade into each other
                         .transition(.scale(scale: 0.6, anchor: .topLeading).combined(with: .opacity))
@@ -144,7 +159,7 @@ private struct MatchContentView: View {
             }
             .padding(.horizontal, 14)
             .padding(.top, 2)
-            .animation(.spring(duration: 0.3), value: viewModel.dogbeardLine)
+            .animation(.spring(duration: 0.3), value: viewModel.captainLine)
 
             Spacer()
 
