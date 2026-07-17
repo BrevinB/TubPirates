@@ -121,14 +121,6 @@ private struct MatchContentView: View {
                     )
                     leaveButton(viewModel)
                 }
-                // Bubble floats below the column so it never shifts the HStack layout.
-                .overlay(alignment: .bottomLeading) {
-                    if let line = viewModel.dogbeardLine {
-                        speechBubble(line)
-                            .alignmentGuide(.bottom) { $0[.top] - 10 }
-                            .transition(.scale(scale: 0.6, anchor: .topLeading).combined(with: .opacity))
-                    }
-                }
                 Spacer()
                 statusBanner(viewModel)
                 Spacer()
@@ -139,6 +131,19 @@ private struct MatchContentView: View {
                 )
             }
             .padding(.horizontal, 12)
+
+            // Dogbeard's bubble gets its own row under the HUD — over open water,
+            // never covering the portrait, Leave button, or status banner.
+            HStack {
+                if let line = viewModel.dogbeardLine {
+                    speechBubble(line)
+                        .id(line) // new line = new view, so texts never crossfade into each other
+                        .transition(.scale(scale: 0.6, anchor: .topLeading).combined(with: .opacity))
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 2)
             .animation(.spring(duration: 0.3), value: viewModel.dogbeardLine)
 
             Spacer()
@@ -165,12 +170,12 @@ private struct MatchContentView: View {
                     .fill(Color(red: 1, green: 0.96, blue: 0.85))
                     .strokeBorder(Color(red: 0.75, green: 0.55, blue: 0.2), lineWidth: 2)
             )
-            .overlay(alignment: .top) {
-                // Tail pointing up at the portrait.
+            .overlay(alignment: .topLeading) {
+                // Tail pointing up toward Dogbeard's card.
                 Triangle()
                     .fill(Color(red: 1, green: 0.96, blue: 0.85))
                     .frame(width: 16, height: 9)
-                    .offset(x: -50, y: -8)
+                    .offset(x: 24, y: -8)
             }
             .accessibilityLabel("Dogbeard says: \(line)")
     }
