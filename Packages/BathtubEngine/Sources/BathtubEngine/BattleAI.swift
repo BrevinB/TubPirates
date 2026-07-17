@@ -22,10 +22,14 @@ public struct BattleAI: Codable, Sendable {
     private var rng: SeededRNG
     /// Chance per hunt-mode turn to spend an available special shot.
     public var specialUseChance: Double
+    /// Chance per turn to get "distracted" — skip intel/target follow-ups and
+    /// fire a plain hunting shot instead. The difficulty dial: 0 = ruthless.
+    public var sloppiness: Double
 
-    public init(seed: UInt64? = nil, specialUseChance: Double = 0.2) {
+    public init(seed: UInt64? = nil, specialUseChance: Double = 0.2, sloppiness: Double = 0) {
         self.rng = SeededRNG(seed: seed ?? UInt64.random(in: UInt64.min...UInt64.max))
         self.specialUseChance = specialUseChance
+        self.sloppiness = sloppiness
     }
 
     public mutating func chooseMove(
@@ -34,15 +38,18 @@ public struct BattleAI: Codable, Sendable {
         remainingUses: [ShotType: Int]
     ) -> Move {
         let untried = Coordinate.allBoardCells.filter { !enemy.isTried($0) }
+        let distracted = sloppiness > 0 && Double.random(in: 0..<1, using: &rng) < sloppiness
 
-        // 1. Revealed ship cells we haven't shot yet are free hits.
-        if let intel = pick(enemy.revealedShipCells.filter { !enemy.isTried($0) }.sorted()) {
-            return Move(player: player, shot: .cannon, target: intel)
-        }
+        if !distracted {
+            // 1. Revealed ship cells we haven't shot yet are free hits.
+            if let intel = pick(enemy.revealedShipCells.filter { !enemy.isTried($0) }.sorted()) {
+                return Move(player: player, shot: .cannon, target: intel)
+            }
 
-        // 2. Target mode: finish off partially hit ships.
-        if let target = targetModeCell(enemy: enemy) {
-            return Move(player: player, shot: .cannon, target: target)
+            // 2. Target mode: finish off partially hit ships.
+            if let target = targetModeCell(enemy: enemy) {
+                return Move(player: player, shot: .cannon, target: target)
+            }
         }
 
         // 3. Hunt mode: sometimes fire a special for flavor.

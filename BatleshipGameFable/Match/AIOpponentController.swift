@@ -8,7 +8,9 @@ final class AIOpponentController: OpponentController {
     private let thinkDelay: Duration
 
     init(player: PlayerID = .two, seed: UInt64? = nil, thinkDelay: Duration = .milliseconds(900)) {
-        self.ai = BattleAI(seed: seed)
+        // Dogbeard is beatable: sometimes distracted mid-hunt, a bit stingier
+        // with specials than a perfect player would be.
+        self.ai = BattleAI(seed: seed, specialUseChance: 0.15, sloppiness: 0.18)
         self.player = player
         self.thinkDelay = thinkDelay
     }

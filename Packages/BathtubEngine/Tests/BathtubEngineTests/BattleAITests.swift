@@ -53,6 +53,65 @@ struct BattleAITests {
         #expect(result.moves < 200)
     }
 
+    @Test("Sloppy AI still finishes games", arguments: UInt64(300)...310)
+    func sloppyAIFinishes(seed: UInt64) throws {
+        var rng = SeededRNG(seed: seed)
+        var state = GameState(
+            boards: [.one: Board.randomlyPlaced(using: &rng), .two: Board.randomlyPlaced(using: &rng)],
+            loadouts: [:]
+        )
+        var ais: [PlayerID: BattleAI] = [
+            .one: BattleAI(seed: seed &+ 1, sloppiness: 0.25),
+            .two: BattleAI(seed: seed &+ 2, sloppiness: 0.25),
+        ]
+        var moves = 0
+        while state.phase == .active && moves < 250 {
+            let player = state.currentPlayer
+            let move = ais[player]!.chooseMove(
+                as: player,
+                observing: state.attackerView(of: player.opponent),
+                remainingUses: [:]
+            )
+            try state.apply(move)
+            moves += 1
+        }
+        #expect(state.phase != .active, "sloppy game should still terminate")
+    }
+
+    @Test func sloppinessActuallyWeakensTheAI() throws {
+        // Ruthless (player .one) vs sloppy-Dogbeard settings (player .two)
+        // across fixed seeds: the sloppy side must lose the majority.
+        var sloppyWins = 0
+        let games = 30
+        for seed in UInt64(1000)..<UInt64(1000 + UInt64(games)) {
+            var rng = SeededRNG(seed: seed)
+            var state = GameState(
+                boards: [.one: Board.randomlyPlaced(using: &rng), .two: Board.randomlyPlaced(using: &rng)],
+                loadouts: [:]
+            )
+            var ais: [PlayerID: BattleAI] = [
+                .one: BattleAI(seed: seed &+ 1),
+                .two: BattleAI(seed: seed &+ 2, sloppiness: 0.18),
+            ]
+            var moves = 0
+            while state.phase == .active && moves < 300 {
+                let player = state.currentPlayer
+                let move = ais[player]!.chooseMove(
+                    as: player,
+                    observing: state.attackerView(of: player.opponent),
+                    remainingUses: [:]
+                )
+                try state.apply(move)
+                moves += 1
+            }
+            if case .finished(let winner) = state.phase, winner == .two {
+                sloppyWins += 1
+            }
+        }
+        #expect(sloppyWins < games / 2, "sloppy AI won \(sloppyWins)/\(games) — should be under half")
+        #expect(sloppyWins > 0, "sloppy AI should still win sometimes (\(sloppyWins)/\(games))")
+    }
+
     @Test func aiIsDeterministicUnderSeed() {
         var rng = SeededRNG(seed: 7)
         let enemyBoard = Board.randomlyPlaced(using: &rng)

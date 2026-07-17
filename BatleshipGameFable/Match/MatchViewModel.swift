@@ -144,11 +144,12 @@ final class MatchViewModel {
         ]
         switch config.mode {
         case .ai, .gameCenter:
-            // Dogbeard always sails fully armed; the player brings their unlocked arsenal.
+            // Dogbeard mirrors the player's arsenal so difficulty scales with
+            // progression instead of outgunning fresh captains.
             // (.gameCenter never lands here — online matches use init(gameCenterState:...).)
             state = GameState(boards: boards, loadouts: [
                 .one: config.loadout,
-                .two: Set(ShotType.allCases),
+                .two: config.loadout,
             ])
             opponent = AIOpponentController(
                 thinkDelay: CommandLine.arguments.contains("-autoBattle") ? .milliseconds(80) : .milliseconds(900)
