@@ -20,13 +20,24 @@ struct MainMenuView: View {
         debugAllShots ? Set(ShotType.allCases) : profileStore.loadoutShots
     }
 
+    /// Drives the gentle floating rock of the title.
+    @State private var titleBob = false
+
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.1, green: 0.35, blue: 0.6), Color(red: 0.05, green: 0.2, blue: 0.4)],
-                startPoint: .top, endPoint: .bottom
-            )
+            // The tub: Dogbeard peeks over the far rim, water fills the frame.
+            GeometryReader { geo in
+                Image("menu_background")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+            }
             .ignoresSafeArea()
+
+            RisingBubblesView()
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
 
             VStack(spacing: 16) {
                 HStack {
@@ -36,25 +47,26 @@ struct MainMenuView: View {
                     recordChip
                 }
 
-                Spacer(minLength: 8)
+                Spacer(minLength: 40)
 
-                VStack(spacing: 6) {
-                    Image("portrait_dogbeard")
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 104, height: 104)
-                        .clipShape(RoundedRectangle(cornerRadius: 18))
-                        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(.orange, lineWidth: 4))
-                        .shadow(radius: 8)
+                VStack(spacing: 4) {
                     Text("Bathtub Battles")
-                        .font(.system(size: 38, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
+                        .font(.system(size: 40, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color(red: 0.12, green: 0.3, blue: 0.52))
+                        .shadow(color: .white.opacity(0.9), radius: 2)
+                        .shadow(color: .white.opacity(0.7), radius: 8)
                         .minimumScaleFactor(0.7)
                         .lineLimit(1)
                     Text("Dogbeard awaits...")
-                        .font(.headline.weight(.medium))
-                        .foregroundStyle(.white.opacity(0.8))
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(Color(red: 0.2, green: 0.4, blue: 0.6))
+                        .shadow(color: .white.opacity(0.8), radius: 3)
                 }
+                // Bob like a toy on the water.
+                .rotationEffect(.degrees(titleBob ? 1.6 : -1.6))
+                .offset(y: titleBob ? -3 : 3)
+                .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: titleBob)
+                .onAppear { titleBob = true }
 
                 Spacer(minLength: 8)
 
