@@ -16,8 +16,11 @@ struct PlacementView: View {
     @State private var dragLocation: CGPoint = .zero
     /// The placed ship a drag started from (so an invalid re-place restores it).
     @State private var liftedShip: Ship?
-    /// Board side length in the shared coordinate space (set by the grid).
-    @State private var boardSideLength: CGFloat?
+    /// The board grid's frame in global coordinates. Drags from the shelf and
+    /// the board both report globally and convert through this — a named
+    /// coordinate space can't be resolved from the shelf (it's not a descendant
+    /// of the board), which pinned shelf drags to the top rows.
+    @State private var boardFrame: CGRect = .zero
     /// Last previewed origin, for haptic ticks as the ghost snaps cell to cell.
     @State private var lastTickedOrigin: Coordinate?
 
@@ -163,14 +166,22 @@ struct PlacementView: View {
             }
             .frame(width: side, height: side)
             .contentShape(Rectangle())
-            .coordinateSpace(name: "board")
             .position(x: geo.size.width / 2, y: geo.size.height / 2)
-            .onGeometryChange(for: CGFloat.self) { _ in
-                side
+            .onGeometryChange(for: CGRect.self) { proxy in
+                proxy.frame(in: .global)
             } action: { value in
-                boardSideLength = value
+                boardFrame = value
             }
         }
+    }
+
+    /// Board-local point for a globally-reported drag location.
+    private func boardLocal(_ global: CGPoint) -> CGPoint {
+        CGPoint(x: global.x - boardFrame.minX, y: global.y - boardFrame.minY)
+    }
+
+    private var cellSizeFromFrame: CGFloat? {
+        boardFrame.width > 0 ? boardFrame.width / 10 : nil
     }
 
     /// The board minus the ship currently lifted for re-dragging.
@@ -301,25 +312,25 @@ struct PlacementView: View {
     }
 
     private func shipDrag(_ ship: Ship, cellSize: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 8, coordinateSpace: .named("board"))
+        DragGesture(minimumDistance: 8, coordinateSpace: .global)
             .onChanged { value in
-                updateDrag(kind: ship.kind, lifted: ship, location: value.location, cellSize: cellSize)
+                updateDrag(kind: ship.kind, lifted: ship, location: boardLocal(value.location), cellSize: cellSize)
             }
             .onEnded { value in
-                dragLocation = value.location
+                dragLocation = boardLocal(value.location)
                 finishDrag(kind: ship.kind, cellSize: cellSize)
             }
     }
 
     private func trayDrag(_ kind: ShipKind) -> some Gesture {
-        DragGesture(minimumDistance: 2, coordinateSpace: .named("board"))
+        DragGesture(minimumDistance: 2, coordinateSpace: .global)
             .onChanged { value in
-                updateDrag(kind: kind, lifted: nil, location: value.location,
-                           cellSize: boardSideLength.map { $0 / 10 })
+                updateDrag(kind: kind, lifted: nil, location: boardLocal(value.location),
+                           cellSize: cellSizeFromFrame)
             }
             .onEnded { value in
-                dragLocation = value.location
-                finishDrag(kind: kind, cellSize: boardSideLength.map { $0 / 10 })
+                dragLocation = boardLocal(value.location)
+                finishDrag(kind: kind, cellSize: cellSizeFromFrame)
             }
     }
 
