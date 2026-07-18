@@ -31,6 +31,7 @@ private struct MatchContentView: View {
     @State private var confirmLeave = false
     @State private var finalReward = 0
     @State private var firstWinBonusApplied = false
+    @State private var showBattleTips = false
 
     var body: some View {
         ZStack {
@@ -52,6 +53,15 @@ private struct MatchContentView: View {
                     .transition(.opacity)
                     .zIndex(10)
                 }
+            }
+
+            // One-time first-battle coach marks (blocks input until tapped through).
+            if showBattleTips {
+                BattleTipsView {
+                    profileStore.markBattleTipsSeen()
+                    withAnimation { showBattleTips = false }
+                }
+                .zIndex(20)
             }
 
             if waitingForOpponent {
@@ -264,6 +274,11 @@ private struct MatchContentView: View {
 
     private func startMatchIfNeeded() {
         guard viewModel == nil, !waitingForOpponent else { return }
+        let forceTips = CommandLine.arguments.contains("-battleTips")
+        if config.mode == .ai, !profileStore.hasSeenBattleTips || forceTips,
+           forceTips || !CommandLine.arguments.contains("-autoBattle") {
+            showBattleTips = true
+        }
         if case .gameCenter(let matchID) = config.mode {
             startOnlineMatch(matchID)
         } else {

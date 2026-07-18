@@ -71,6 +71,28 @@ final class ProfileStore {
         }
     }
 
+    // MARK: - Onboarding
+
+    var hasSeenWelcome: Bool { profile.hasSeenWelcome }
+    var hasSeenBattleTips: Bool { profile.hasSeenBattleTips }
+
+    func markWelcomeSeen() {
+        profile.hasSeenWelcome = true
+        save()
+    }
+
+    func markBattleTipsSeen() {
+        profile.hasSeenBattleTips = true
+        save()
+    }
+
+    /// Settings: replay the welcome + first-battle tips.
+    func resetOnboarding() {
+        profile.hasSeenWelcome = false
+        profile.hasSeenBattleTips = false
+        save()
+    }
+
     // MARK: - Daily rewards
 
     var isDailyChestAvailable: Bool {

@@ -55,6 +55,15 @@ struct SettingsView: View {
             }
 
             Section {
+                Button("Replay Tutorial") {
+                    profileStore.resetOnboarding()
+                    path.removeAll()
+                }
+            } footer: {
+                sectionFooter("Shows the welcome story and first-battle tips again.")
+            }
+
+            Section {
                 Button("Reset Profile", role: .destructive) {
                     confirmReset = true
                 }

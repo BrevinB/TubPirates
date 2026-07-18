@@ -13,6 +13,7 @@ struct RootView: View {
     @State private var path: [Route] = []
     @State private var profileStore = ProfileStore()
     @State private var gameCenter = GameCenterService.shared
+    @State private var showWelcome = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -33,6 +34,16 @@ struct RootView: View {
                 }
         }
         .environment(profileStore)
+        .fullScreenCover(isPresented: $showWelcome) {
+            WelcomeView {
+                profileStore.markWelcomeSeen()
+                showWelcome = false
+            }
+        }
+        .onChange(of: profileStore.hasSeenWelcome) { _, seen in
+            // Settings' "Replay Tutorial" clears the flag mid-session.
+            if !seen { showWelcome = true }
+        }
         .onChange(of: gameCenter.pendingMatchID) { _, matchID in
             // User tapped a Game Center turn notification — jump into that match.
             guard let matchID else { return }
@@ -42,6 +53,10 @@ struct RootView: View {
         .onAppear {
             gameCenter.authenticate()
             let args = CommandLine.arguments
+            // -welcome forces the story for testing; otherwise first launch only.
+            if !profileStore.hasSeenWelcome || args.contains("-welcome") {
+                showWelcome = true
+            }
             // Debug: -avatar <assetID> pre-selects a captain portrait for testing.
             if let index = args.firstIndex(of: "-avatar"), index + 1 < args.count {
                 profileStore.setAvatar(args[index + 1])
@@ -64,6 +79,7 @@ struct RootView: View {
                 // Debug deep links for testing: -screen placement|armory|settings
                 switch args[index + 1] {
                 case "placement": path = [.placement(MatchConfig(mode: .ai))]
+                case "battle": path = [.match(MatchConfig(mode: .ai, loadout: Set(ShotType.allCases)))]
                 case "captains": path = [.captains(MatchConfig(mode: .ai))]
                 case "armory": path = [.armory]
                 case "settings": path = [.settings]

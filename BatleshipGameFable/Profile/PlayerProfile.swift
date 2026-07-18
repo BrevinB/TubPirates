@@ -18,6 +18,10 @@ struct PlayerProfile: Codable, Equatable {
     var lastDailyChestClaim: Date?
     /// When the first-win-of-the-day bonus was last granted.
     var lastFirstWinBonus: Date?
+    /// First-launch welcome story has been shown.
+    var hasSeenWelcome: Bool = false
+    /// First-battle coach marks have been shown.
+    var hasSeenBattleTips: Bool = false
 
     /// A few free uses so new captains learn how special shots work:
     /// intel (Parrot Scout) and damage (Big Shot Cannon).
@@ -40,6 +44,10 @@ struct PlayerProfile: Codable, Equatable {
             ?? [:]
         lastDailyChestClaim = try container.decodeIfPresent(Date.self, forKey: .lastDailyChestClaim)
         lastFirstWinBonus = try container.decodeIfPresent(Date.self, forKey: .lastFirstWinBonus)
+        // Veterans who predate onboarding shouldn't be walked through it.
+        let isVeteran = wins + losses > 0
+        hasSeenWelcome = try container.decodeIfPresent(Bool.self, forKey: .hasSeenWelcome) ?? isVeteran
+        hasSeenBattleTips = try container.decodeIfPresent(Bool.self, forKey: .hasSeenBattleTips) ?? isVeteran
 
         if let inventory = try container.decodeIfPresent([ShotType: Int].self, forKey: .shotInventory) {
             shotInventory = inventory
