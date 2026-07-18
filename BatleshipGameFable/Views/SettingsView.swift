@@ -8,25 +8,50 @@ struct SettingsView: View {
     @State private var confirmReset = false
 
     var body: some View {
+        ZStack {
+            ScreenBackground(imageName: "tile_background")
+            RisingBubblesView()
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+            settingsList
+        }
+    }
+
+    private func sectionHeader(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 14, weight: .heavy, design: .rounded))
+            .foregroundStyle(Color(red: 0.1, green: 0.35, blue: 0.35))
+    }
+
+    private func sectionFooter(_ text: String) -> some View {
+        Text(text)
+            .foregroundStyle(Color(red: 0.15, green: 0.38, blue: 0.38))
+    }
+
+    private var settingsList: some View {
         List {
-            Section("Feel") {
+            Section {
                 Toggle("Haptics", isOn: $hapticsEnabled)
+            } header: {
+                sectionHeader("Feel")
             }
 
             #if DEBUG
             Section {
                 Toggle("Unlock every cannon", isOn: $debugAllShots)
             } header: {
-                Text("Developer")
+                sectionHeader("Developer")
             } footer: {
-                Text("Battles start with every special shot armed and nothing is spent from your stash. Debug builds only.")
+                sectionFooter("Battles start with every special shot armed and nothing is spent from your stash. Debug builds only.")
             }
             #endif
 
-            Section("Record") {
+            Section {
                 LabeledContent("Wins", value: "\(profileStore.profile.wins)")
                 LabeledContent("Losses", value: "\(profileStore.profile.losses)")
                 LabeledContent("Doubloons", value: "\(profileStore.coins)")
+            } header: {
+                sectionHeader("Record")
             }
 
             Section {
@@ -34,9 +59,10 @@ struct SettingsView: View {
                     confirmReset = true
                 }
             } footer: {
-                Text("Clears doubloons, your shot stash, and your battle record.")
+                sectionFooter("Clears doubloons, your shot stash, and your battle record.")
             }
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle("Settings")
         .confirmationDialog(
             "Reset your profile?",
