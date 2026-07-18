@@ -20,6 +20,18 @@ struct MatchConfig: Hashable {
     var consumesInventory: Bool = false
     /// Restore the match saved in MatchSaveStore instead of starting fresh.
     var resume: Bool = false
+    /// The onboarding battle: starts nearly won with a full comped arsenal.
+    var tutorial: Bool = false
+
+    /// The onboarding battle config: every special comped, nothing consumed.
+    static var tutorialBattle: MatchConfig {
+        MatchConfig(
+            mode: .ai,
+            loadout: Set(ShotType.allCases),
+            consumesInventory: false,
+            tutorial: true
+        )
+    }
 }
 
 /// Supplies the non-local player's moves (AI locally, Game Center online).

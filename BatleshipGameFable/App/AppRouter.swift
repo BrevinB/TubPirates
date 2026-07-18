@@ -38,6 +38,11 @@ struct RootView: View {
             WelcomeView {
                 profileStore.markWelcomeSeen()
                 showWelcome = false
+                // New captains sail straight into the nearly-won onboarding
+                // battle: full arsenal to taste, coach marks overlaid.
+                if !profileStore.hasSeenBattleTips {
+                    path = [.match(.tutorialBattle)]
+                }
             }
         }
         .onChange(of: profileStore.hasSeenWelcome) { _, seen in
@@ -80,6 +85,7 @@ struct RootView: View {
                 switch args[index + 1] {
                 case "placement": path = [.placement(MatchConfig(mode: .ai))]
                 case "battle": path = [.match(MatchConfig(mode: .ai, loadout: Set(ShotType.allCases)))]
+                case "tutorial": path = [.match(.tutorialBattle)]
                 case "captains": path = [.captains(MatchConfig(mode: .ai))]
                 case "armory": path = [.armory]
                 case "settings": path = [.settings]

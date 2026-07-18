@@ -53,6 +53,17 @@ struct Captain: Identifiable, Equatable {
     var sadPortrait: String { portrait + "_sad" }
     /// Smug victory portrait variant (shown when the captain wins).
     var gloatPortrait: String { portrait + "_gloat" }
+
+    /// A same-identity copy with different AI dials (e.g. the tutorial's
+    /// extra-sloppy Dogbeard). Identity fields — id, art, lines — are kept.
+    func tuned(sloppiness: Double, specialUseChance: Double) -> Captain {
+        Captain(
+            id: id, name: name, portrait: portrait, blurb: blurb,
+            sloppiness: sloppiness, specialUseChance: specialUseChance,
+            rewardMultiplier: rewardMultiplier, winsToAdvance: winsToAdvance,
+            lines: lines
+        )
+    }
 }
 
 // MARK: - The roster

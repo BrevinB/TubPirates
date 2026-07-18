@@ -137,8 +137,22 @@ final class MatchViewModel {
         return Int((Double(base) * multiplier).rounded())
     }
 
+    private let isTutorial: Bool
+
     init(config: MatchConfig) {
         consumesInventory = config.consumesInventory
+        isTutorial = config.tutorial
+
+        // The onboarding battle: mostly-sunk Dogbeard, full arsenal, easy finish.
+        if config.tutorial {
+            mode = .ai
+            captain = Captain.dogbeard.tuned(sloppiness: 0.55, specialUseChance: 0)
+            fixedLocalPlayer = .one
+            state = Self.tutorialState()
+            opponent = AIOpponentController(captain: captain)
+            return
+        }
+
         // Resume a locally saved battle when asked (and one actually exists).
         if config.resume, let saved = MatchSaveStore.load() {
             let savedCaptain = Captain.withID(saved.captainID)
@@ -182,9 +196,56 @@ final class MatchViewModel {
         }
     }
 
+    /// Builds the onboarding battle: fixed fleets, with a scripted exchange of
+    /// cannon fire already applied so three of Dogbeard's ships are sunk and
+    /// only his duck sub and dinghy remain. The player holds every special.
+    private static func tutorialState() -> GameState {
+        var enemy = Board()
+        try! enemy.place(.galleon, at: Coordinate(row: 0, col: 0), orientation: .horizontal)
+        try! enemy.place(.frigate, at: Coordinate(row: 2, col: 0), orientation: .horizontal)
+        try! enemy.place(.tugboat, at: Coordinate(row: 4, col: 0), orientation: .horizontal)
+        try! enemy.place(.duckSub, at: Coordinate(row: 6, col: 6), orientation: .vertical)
+        try! enemy.place(.dinghy, at: Coordinate(row: 9, col: 8), orientation: .horizontal)
+
+        var mine = Board()
+        try! mine.place(.galleon, at: Coordinate(row: 0, col: 0), orientation: .horizontal)
+        try! mine.place(.frigate, at: Coordinate(row: 2, col: 0), orientation: .horizontal)
+        try! mine.place(.tugboat, at: Coordinate(row: 4, col: 0), orientation: .horizontal)
+        try! mine.place(.duckSub, at: Coordinate(row: 6, col: 0), orientation: .vertical)
+        try! mine.place(.dinghy, at: Coordinate(row: 9, col: 4), orientation: .horizontal)
+
+        var state = GameState(
+            boards: [.one: mine, .two: enemy],
+            loadouts: [.one: Set(ShotType.allCases), .two: []]
+        )
+
+        // The player's shots: sink the galleon, frigate, and tugboat.
+        let playerShots: [Coordinate] = [
+            Coordinate(row: 0, col: 0), Coordinate(row: 0, col: 1), Coordinate(row: 0, col: 2),
+            Coordinate(row: 0, col: 3), Coordinate(row: 0, col: 4),
+            Coordinate(row: 2, col: 0), Coordinate(row: 2, col: 1), Coordinate(row: 2, col: 2),
+            Coordinate(row: 2, col: 3),
+            Coordinate(row: 4, col: 0), Coordinate(row: 4, col: 1), Coordinate(row: 4, col: 2),
+        ]
+        // Dogbeard's shots: two hits on the galleon, the rest wide misses.
+        let dogbeardShots: [Coordinate] = [
+            Coordinate(row: 0, col: 0), Coordinate(row: 0, col: 1),
+            Coordinate(row: 5, col: 5), Coordinate(row: 5, col: 6), Coordinate(row: 5, col: 7),
+            Coordinate(row: 3, col: 4), Coordinate(row: 3, col: 5), Coordinate(row: 3, col: 6),
+            Coordinate(row: 7, col: 7), Coordinate(row: 7, col: 8), Coordinate(row: 1, col: 7),
+            Coordinate(row: 8, col: 8),
+        ]
+        for (playerShot, dogbeardShot) in zip(playerShots, dogbeardShots) {
+            try! state.apply(Move(player: .one, shot: .cannon, target: playerShot))
+            try! state.apply(Move(player: .two, shot: .cannon, target: dogbeardShot))
+        }
+        return state
+    }
+
     /// Online matches arrive with a server-synced state and an assigned seat.
     init(gameCenterState: GameState, localPlayer: PlayerID, controller: GameCenterController) {
         consumesInventory = false
+        isTutorial = false
         captain = .dogbeard // unused online; portraits come from Game Center identities
         mode = .gameCenter(matchID: controller.match.matchID)
         fixedLocalPlayer = localPlayer
@@ -217,6 +278,7 @@ final class MatchViewModel {
 
     /// Persists AI and pass-and-play battles so leaving mid-match isn't fatal.
     private func saveIfNeeded() {
+        guard !isTutorial else { return } // the onboarding battle is disposable
         let savedMode: SavedMatch.SavedMode
         switch mode {
         case .ai: savedMode = .ai
