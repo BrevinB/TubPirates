@@ -14,10 +14,16 @@ struct Avatar: Identifiable, Equatable {
         Avatar(id: "avatar_duck_yellow", name: "Classic Quack"),
         Avatar(id: "avatar_duck_pink", name: "Duchess Quackington"),
         Avatar(id: "avatar_duck_ninja", name: "Shadow Quack"),
+        Avatar(id: "avatar_crab", name: "Pinchy", price: 300),
         Avatar(id: "avatar_octopus", name: "Sudsy the Octopus", price: 400),
         Avatar(id: "avatar_turtle", name: "Sir Barnacle", price: 500),
+        Avatar(id: "avatar_puffer", name: "Puffbeard", price: 600),
         Avatar(id: "avatar_kraken", name: "The Kraken", price: 750),
+        Avatar(id: "avatar_shark", name: "Scrubs the Shark", price: 850),
+        Avatar(id: "avatar_narwhal", name: "Lord Pointington", price: 1000),
+        Avatar(id: "avatar_duck_robo", name: "Quackbot 3000", price: 1250),
         Avatar(id: "avatar_duck_gold", name: "The Golden Quack", price: 1500),
+        Avatar(id: "avatar_duck_diamond", name: "The Diamond Quack", price: 2500),
     ]
 
     static let defaultID = "portrait_player"
