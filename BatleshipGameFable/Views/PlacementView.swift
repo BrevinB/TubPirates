@@ -1,24 +1,34 @@
 import SwiftUI
+import UIKit
 import BathtubEngine
 
-/// Pre-battle fleet placement: a straight (un-rotated) grid for usability.
-/// Drag ships from the tray onto the board, tap a placed ship to rotate it,
-/// drag a placed ship off the board to return it, or just Randomize.
+/// Pre-battle fleet placement: a straight (un-rotated) grid over the tub water.
+/// Drag ships from the caddy shelf onto the board — a ghost ship floats above
+/// your finger so you can see exactly where it lands — tap a placed ship to
+/// rotate it, drag it off the board to shelve it, or just Randomize.
 struct PlacementView: View {
     let config: MatchConfig
     @Binding var path: [Route]
 
     @State private var board = Board()
-    /// Kind being dragged (from tray or board) and its current finger location.
+    /// Kind being dragged (from shelf or board) and the finger's board-space location.
     @State private var draggingKind: ShipKind?
     @State private var dragLocation: CGPoint = .zero
-    /// Where the drag started from the board (so a failed re-place restores it).
+    /// The placed ship a drag started from (so an invalid re-place restores it).
     @State private var liftedShip: Ship?
+    /// Board side length in the shared coordinate space (set by the grid).
+    @State private var boardSideLength: CGFloat?
+    /// Last previewed origin, for haptic ticks as the ghost snaps cell to cell.
+    @State private var lastTickedOrigin: Coordinate?
 
     private static let shipImages: [ShipKind: String] = [
         .galleon: "ship_5", .frigate: "ship_4", .tugboat: "ship_3a",
         .duckSub: "ship_3b", .dinghy: "ship_2",
     ]
+
+    /// How far the ghost floats above the finger, in cells — keeps the ship
+    /// visible instead of hidden under your thumb.
+    private let fingerLift: CGFloat = 1.15
 
     private var trayKinds: [ShipKind] {
         var remaining = ShipKind.standardFleet
@@ -36,37 +46,34 @@ struct PlacementView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.1, green: 0.35, blue: 0.6), Color(red: 0.05, green: 0.2, blue: 0.4)],
-                startPoint: .top, endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            ScreenBackground(imageName: "placement_background")
 
-            VStack(spacing: 14) {
+            VStack(spacing: 10) {
                 Text("Place Your Fleet")
                     .font(.system(size: 30, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
-                Text("Drag ships to the board • Tap a ship to rotate")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(Color(red: 0.12, green: 0.3, blue: 0.52))
+                    .shadow(color: .white.opacity(0.9), radius: 2)
+                Text("Drag toys from the shelf • Tap a ship to rotate")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(Color(red: 0.2, green: 0.4, blue: 0.6))
+                    .shadow(color: .white.opacity(0.8), radius: 2)
 
                 boardGrid
                     .padding(.horizontal, 14)
-
-                tray
 
                 HStack(spacing: 14) {
                     Button {
                         var rng = SystemRandomNumberGenerator()
                         board = Board.randomlyPlaced(using: &rng)
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     } label: {
                         Label("Randomize", systemImage: "dice.fill")
                             .font(.headline)
                             .padding(.vertical, 6)
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
-                    .tint(.white)
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color(red: 0.25, green: 0.5, blue: 0.75))
 
                     Button {
                         var battleConfig = config
@@ -83,6 +90,9 @@ struct PlacementView: View {
                     .disabled(!fleetComplete)
                 }
                 .padding(.horizontal, 20)
+
+                tray
+                    .padding(.bottom, 6)
             }
             .padding(.vertical)
         }
@@ -100,24 +110,22 @@ struct PlacementView: View {
                 // Water tiles
                 ForEach(Coordinate.allBoardCells, id: \.self) { cell in
                     RoundedRectangle(cornerRadius: 2)
-                        .fill(Color(red: 0.42, green: 0.72, blue: 0.93))
+                        .fill(Color(red: 0.42, green: 0.72, blue: 0.93).opacity(0.85))
                         .padding(1)
                         .frame(width: cellSize, height: cellSize)
                         .position(center(of: cell, cellSize: cellSize))
                 }
 
-                // Drop preview
-                if let kind = draggingKind {
-                    let origin = dropOrigin(for: kind, cellSize: cellSize, in: geo.size)
-                    if let origin {
-                        let valid = boardWithoutLifted.canPlace(kind, at: origin.cell, orientation: origin.orientation)
-                        ForEach(Ship(kind: kind, origin: origin.cell, orientation: origin.orientation).cells.filter(\.isValid), id: \.self) { cell in
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(valid ? Color.green.opacity(0.55) : Color.red.opacity(0.55))
-                                .padding(1)
-                                .frame(width: cellSize, height: cellSize)
-                                .position(center(of: cell, cellSize: cellSize))
-                        }
+                // Drop preview under the ghost
+                if let kind = draggingKind,
+                   let target = dropTarget(for: kind, cellSize: cellSize) {
+                    let valid = boardWithoutLifted.canPlace(kind, at: target.cell, orientation: target.orientation)
+                    ForEach(Ship(kind: kind, origin: target.cell, orientation: target.orientation).cells.filter(\.isValid), id: \.self) { cell in
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(valid ? Color.green.opacity(0.55) : Color.red.opacity(0.55))
+                            .padding(1)
+                            .frame(width: cellSize, height: cellSize)
+                            .position(center(of: cell, cellSize: cellSize))
                     }
                 }
 
@@ -134,7 +142,23 @@ struct PlacementView: View {
                         .position(shipCenter(ship, cellSize: cellSize))
                         .opacity(liftedShip?.id == ship.id ? 0.25 : 1)
                         .onTapGesture { rotate(ship) }
-                        .gesture(boardShipDrag(ship, cellSize: cellSize))
+                        .gesture(shipDrag(ship, cellSize: cellSize))
+                }
+
+                // The ghost ship floating above the finger
+                if let kind = draggingKind {
+                    Image(Self.shipImages[kind] ?? "ship_2")
+                        .resizable()
+                        .frame(
+                            width: cellSize * CGFloat(kind.length),
+                            height: cellSize
+                        )
+                        .rotationEffect(dragOrientation == .horizontal ? .zero : .degrees(90))
+                        .position(ghostCenter(cellSize: cellSize))
+                        .opacity(0.85)
+                        .scaleEffect(1.06)
+                        .shadow(color: .black.opacity(0.35), radius: 6, y: 5)
+                        .allowsHitTesting(false)
                 }
             }
             .frame(width: side, height: side)
@@ -157,6 +181,10 @@ struct PlacementView: View {
         return copy
     }
 
+    private var dragOrientation: Orientation {
+        liftedShip?.orientation ?? .horizontal
+    }
+
     private func center(of cell: Coordinate, cellSize: CGFloat) -> CGPoint {
         CGPoint(
             x: (CGFloat(cell.col) + 0.5) * cellSize,
@@ -170,23 +198,45 @@ struct PlacementView: View {
         return CGPoint(x: (first.x + last.x) / 2, y: (first.y + last.y) / 2)
     }
 
-    /// Converts the current drag location to a candidate origin cell
-    /// (finger anchors the ship's first cell, clamped into bounds).
-    private func dropOrigin(for kind: ShipKind, cellSize: CGFloat, in size: CGSize)
+    /// Where the ghost ship's center sits: lifted above the finger so the
+    /// toy stays visible while dragging.
+    private func ghostCenter(cellSize: CGFloat) -> CGPoint {
+        CGPoint(x: dragLocation.x, y: dragLocation.y - cellSize * fingerLift)
+    }
+
+    /// Converts the ghost's center to a snapped origin cell, or nil when the
+    /// ghost is too far off the board (= drop back onto the shelf).
+    private func dropTarget(for kind: ShipKind, cellSize: CGFloat)
         -> (cell: Coordinate, orientation: Orientation)? {
-        guard dragLocation.x > -cellSize, dragLocation.y > -cellSize,
-              dragLocation.x < size.width + cellSize, dragLocation.y < size.height + cellSize
+        let side = cellSize * 10
+        let ghost = ghostCenter(cellSize: cellSize)
+        let margin = cellSize * 1.2
+        guard ghost.x > -margin, ghost.x < side + margin,
+              ghost.y > -margin, ghost.y < side + margin
         else { return nil }
-        let orientation = liftedShip?.orientation ?? .horizontal
-        var col = Int(dragLocation.x / cellSize)
-        var row = Int(dragLocation.y / cellSize)
-        if orientation == .horizontal {
-            col = min(col, Board.size - kind.length)
-        } else {
-            row = min(row, Board.size - kind.length)
+
+        let orientation = dragOrientation
+        let length = CGFloat(kind.length)
+        var row: Int
+        var col: Int
+        // A ship spanning cells c..c+len-1 has center at (c + len/2) * cell.
+        switch orientation {
+        case .horizontal:
+            col = Int((ghost.x / cellSize - length / 2).rounded())
+            row = Int((ghost.y / cellSize - 0.5).rounded())
+        case .vertical:
+            col = Int((ghost.x / cellSize - 0.5).rounded())
+            row = Int((ghost.y / cellSize - length / 2).rounded())
         }
-        let cell = Coordinate(row: max(0, min(row, Board.size - 1)), col: max(0, min(col, Board.size - 1)))
-        return (cell, orientation)
+        // Clamp fully onto the board.
+        if orientation == .horizontal {
+            col = max(0, min(col, Board.size - kind.length))
+            row = max(0, min(row, Board.size - 1))
+        } else {
+            row = max(0, min(row, Board.size - kind.length))
+            col = max(0, min(col, Board.size - 1))
+        }
+        return (Coordinate(row: row, col: col), orientation)
     }
 
     // MARK: - Interactions
@@ -202,43 +252,86 @@ struct PlacementView: View {
         if copy.canPlace(ship.kind, at: origin, orientation: rotated) {
             try? copy.place(ship.kind, at: origin, orientation: rotated)
             board = copy
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        } else {
+            UINotificationFeedbackGenerator().notificationOccurred(.warning)
         }
     }
 
-    private func boardShipDrag(_ ship: Ship, cellSize: CGFloat) -> some Gesture {
+    private func updateDrag(kind: ShipKind, lifted: Ship?, location: CGPoint, cellSize: CGFloat?) {
+        draggingKind = kind
+        liftedShip = lifted
+        dragLocation = location
+        // Tick as the ghost snaps from cell to cell.
+        if let cellSize, let target = dropTarget(for: kind, cellSize: cellSize) {
+            if target.cell != lastTickedOrigin {
+                lastTickedOrigin = target.cell
+                UIImpactFeedbackGenerator(style: .light).impactOccurred(intensity: 0.6)
+            }
+        } else {
+            lastTickedOrigin = nil
+        }
+    }
+
+    private func finishDrag(kind: ShipKind, cellSize: CGFloat?) {
+        defer {
+            draggingKind = nil
+            liftedShip = nil
+            lastTickedOrigin = nil
+        }
+        guard let cellSize else { return }
+        var copy = board
+        if let liftedShip {
+            copy.removeShip(id: liftedShip.id)
+        }
+        if let target = dropTarget(for: kind, cellSize: cellSize) {
+            if copy.canPlace(kind, at: target.cell, orientation: target.orientation) {
+                try? copy.place(kind, at: target.cell, orientation: target.orientation)
+                board = copy
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            } else if liftedShip != nil {
+                // Invalid spot for a board ship: keep its original placement.
+                UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            }
+        } else if liftedShip != nil {
+            // Dragged clear off the board: back to the shelf.
+            board = copy
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
+    }
+
+    private func shipDrag(_ ship: Ship, cellSize: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 8, coordinateSpace: .named("board"))
             .onChanged { value in
-                liftedShip = ship
-                draggingKind = ship.kind
-                dragLocation = value.location
+                updateDrag(kind: ship.kind, lifted: ship, location: value.location, cellSize: cellSize)
             }
             .onEnded { value in
                 dragLocation = value.location
-                defer { draggingKind = nil; liftedShip = nil }
-                var copy = board
-                copy.removeShip(id: ship.id)
-                // Dropped off-board = return to tray; otherwise try the new spot.
-                let bounds = CGRect(x: 0, y: 0, width: cellSize * 10, height: cellSize * 10)
-                if bounds.insetBy(dx: -cellSize, dy: -cellSize).contains(value.location) {
-                    if let target = dropOrigin(for: ship.kind, cellSize: cellSize, in: bounds.size),
-                       copy.canPlace(ship.kind, at: target.cell, orientation: target.orientation) {
-                        try? copy.place(ship.kind, at: target.cell, orientation: target.orientation)
-                    } else {
-                        return // invalid spot: keep the original placement
-                    }
-                }
-                board = copy
+                finishDrag(kind: ship.kind, cellSize: cellSize)
             }
     }
 
-    // MARK: - Tray
+    private func trayDrag(_ kind: ShipKind) -> some Gesture {
+        DragGesture(minimumDistance: 2, coordinateSpace: .named("board"))
+            .onChanged { value in
+                updateDrag(kind: kind, lifted: nil, location: value.location,
+                           cellSize: boardSideLength.map { $0 / 10 })
+            }
+            .onEnded { value in
+                dragLocation = value.location
+                finishDrag(kind: kind, cellSize: boardSideLength.map { $0 / 10 })
+            }
+    }
+
+    // MARK: - Shelf tray
 
     private var tray: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             if trayKinds.isEmpty {
                 Text("Fleet ready, Captain! ⚓️")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(.white)
+                    .font(.headline.weight(.heavy))
+                    .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.08))
+                    .shadow(color: .white.opacity(0.4), radius: 1)
             }
             ForEach(trayKinds, id: \.self) { kind in
                 trayShip(kind)
@@ -246,46 +339,20 @@ struct PlacementView: View {
         }
         .frame(height: 64)
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, 8)
-        .background(.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 12))
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 12)
     }
 
     private func trayShip(_ kind: ShipKind) -> some View {
-        shipImage(kind)
-            .frame(maxWidth: CGFloat(kind.length) * 17, maxHeight: 24)
-            .opacity(draggingKind == kind && liftedShip == nil ? 0.3 : 1)
-            .gesture(trayDrag(kind))
-            .accessibilityLabel(kind.displayName)
-    }
-
-    private func trayDrag(_ kind: ShipKind) -> some Gesture {
-        DragGesture(minimumDistance: 2, coordinateSpace: .named("board"))
-            .onChanged { value in
-                draggingKind = kind
-                liftedShip = nil
-                dragLocation = value.location
-            }
-            .onEnded { value in
-                dragLocation = value.location
-                defer { draggingKind = nil }
-                // The tray sits below the board; board coordinates come from the named space.
-                guard let boardSide = boardSideLength else { return }
-                let size = CGSize(width: boardSide, height: boardSide)
-                if let target = dropOrigin(for: kind, cellSize: boardSide / 10, in: size),
-                   board.canPlace(kind, at: target.cell, orientation: target.orientation) {
-                    try? board.place(kind, at: target.cell, orientation: target.orientation)
-                }
-            }
-    }
-
-    /// Board side length in the shared coordinate space (screen width minus padding).
-    @State private var boardSideLength: CGFloat?
-
-    private func shipImage(_ kind: ShipKind) -> some View {
         Image(Self.shipImages[kind] ?? "ship_2")
             .resizable()
             .scaledToFit()
+            .frame(maxWidth: CGFloat(kind.length) * 19, maxHeight: 30)
+            .opacity(draggingKind == kind && liftedShip == nil ? 0.3 : 1)
+            // Generous invisible hit area — little toys are hard to pinch.
+            .frame(minWidth: 44, minHeight: 56)
+            .contentShape(Rectangle())
+            .gesture(trayDrag(kind))
+            .accessibilityLabel(kind.displayName)
     }
 }
 
