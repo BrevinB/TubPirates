@@ -56,6 +56,7 @@ struct RootView: View {
             path = [.match(MatchConfig(mode: .gameCenter(matchID: matchID), loadout: Set(ShotType.allCases)))]
         }
         .onAppear {
+            SoundService.shared.warmUp()
             gameCenter.authenticate()
             let args = CommandLine.arguments
             // -welcome forces the story for testing; otherwise first launch only.

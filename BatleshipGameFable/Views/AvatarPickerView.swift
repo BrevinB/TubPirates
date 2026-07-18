@@ -39,7 +39,9 @@ struct AvatarPickerView: View {
                 if let avatar = pendingPurchase {
                     if profileStore.coins >= avatar.price {
                         Button("Buy & Equip") {
-                            profileStore.buyAvatar(avatar)
+                            if profileStore.buyAvatar(avatar) {
+                                SoundService.shared.play(.chest)
+                            }
                             pendingPurchase = nil
                         }
                     }

@@ -131,8 +131,12 @@ struct MatchEndView: View {
             .padding()
         }
         .task {
+            SoundService.shared.play(didWin ? .victory : .defeat)
             // Count the reward up in steps.
             try? await Task.sleep(for: .milliseconds(250))
+            if coinReward > 0 {
+                SoundService.shared.play(.coin)
+            }
             let steps = 24
             for i in 1...steps {
                 try? await Task.sleep(for: .milliseconds(38))

@@ -54,6 +54,7 @@ struct ShotPanelView: View {
 
         return Button {
             if spent { return }
+            SoundService.shared.play(.tap)
             if shot == .flare {
                 confirmFlare = true
             } else {

@@ -184,7 +184,10 @@ struct MainMenuView: View {
             Button {
                 withAnimation(.spring(duration: 0.4)) {
                     let amount = profileStore.claimDailyChest()
-                    if amount > 0 { claimedChestAmount = amount }
+                    if amount > 0 {
+                        claimedChestAmount = amount
+                        SoundService.shared.play(.chest)
+                    }
                 }
             } label: {
                 HStack(spacing: 10) {
@@ -245,7 +248,10 @@ struct MainMenuView: View {
     }
 
     private func menuButton(_ title: String, icon: String, tint: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button {
+            SoundService.shared.play(.tap)
+            action()
+        } label: {
             Label(title, systemImage: icon)
                 .font(.headline.weight(.bold))
                 .frame(maxWidth: 300)

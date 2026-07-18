@@ -73,7 +73,9 @@ struct ArmoryView: View {
 
             Button {
                 withAnimation {
-                    _ = profileStore.buyUse(of: shot)
+                    if profileStore.buyUse(of: shot) {
+                        SoundService.shared.play(.coin)
+                    }
                 }
             } label: {
                 VStack(spacing: 2) {

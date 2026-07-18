@@ -171,6 +171,7 @@ final class BattleScene: SKScene, BattleSceneRendering {
         }
 
         if !resolution.sunkShips.isEmpty {
+            SoundService.shared.play(.sunk)
             for ship in resolution.sunkShips {
                 let mid = ship.cells[ship.cells.count / 2]
                 let smoke = ParticleFactory.smoke()

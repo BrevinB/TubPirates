@@ -25,6 +25,7 @@ enum ShotAnimator {
         let mid = CGPoint(x: (start.x + target.x) / 2, y: max(start.y, target.y) + 170)
         path.addQuadCurve(to: target, control: mid)
 
+        SoundService.shared.play(.cannon)
         let flight = SKAction.follow(path, asOffset: false, orientToPath: false, duration: 0.55)
         flight.timingMode = .easeIn
         let heightIllusion = SKAction.sequence([
@@ -34,6 +35,7 @@ enum ShotAnimator {
         await ball.run(.group([flight, heightIllusion]))
         ball.removeFromParent()
 
+        SoundService.shared.play(outcome == .hit ? .explosion : .splash)
         let effect = outcome == .hit ? ParticleFactory.explosion() : ParticleFactory.splash()
         effect.position = target
         scene.addChild(effect)
@@ -58,11 +60,13 @@ enum ShotAnimator {
         let path = CGMutablePath()
         path.move(to: start)
         path.addQuadCurve(to: target, control: CGPoint(x: (start.x + target.x) / 2, y: max(start.y, target.y) + 260))
+        SoundService.shared.play(.cannon)
         let flight = SKAction.follow(path, asOffset: false, orientToPath: false, duration: 0.8)
         flight.timingMode = .easeOut
         await shell.run(flight)
         shell.removeFromParent()
 
+        SoundService.shared.play(.reveal)
         let burst = ParticleFactory.sparkle()
         burst.numParticlesToEmit = 40
         burst.particleSpeed = 120
@@ -74,6 +78,7 @@ enum ShotAnimator {
 
     /// Parrot scout: flies across the scouted area.
     static func parrot(over target: CGPoint, in scene: SKScene) async {
+        SoundService.shared.play(.parrot)
         let parrot = SKSpriteNode(texture: SKTexture(imageNamed: "parrot_scout"))
         let aspect = parrot.texture.map { $0.size().width / $0.size().height } ?? 1
         parrot.size = CGSize(width: 90 * aspect, height: 90)
