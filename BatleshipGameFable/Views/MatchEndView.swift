@@ -21,15 +21,28 @@ struct MatchEndView: View {
     @State private var displayedCoins = 0
     @State private var winnerBounce = false
 
+    /// Ink colors that read on each background's palette.
+    private var titleColor: Color {
+        didWin ? Color(red: 0.75, green: 0.5, blue: 0.08) : Color(red: 0.88, green: 0.92, blue: 1)
+    }
+    private var messageColor: Color {
+        didWin ? Color(red: 0.45, green: 0.35, blue: 0.15) : Color(red: 0.8, green: 0.85, blue: 0.95)
+    }
+
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: didWin
-                    ? [Color(red: 0.1, green: 0.5, blue: 0.3), Color(red: 0.05, green: 0.3, blue: 0.2)]
-                    : [Color(red: 0.5, green: 0.15, blue: 0.15), Color(red: 0.3, green: 0.08, blue: 0.1)],
-                startPoint: .top, endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            ScreenBackground(imageName: didWin ? "victory_background" : "defeat_background")
+
+            if didWin {
+                FallingConfettiView()
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+            } else {
+                RisingBubblesView()
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                    .opacity(0.4)
+            }
 
             VStack(spacing: 28) {
                 Spacer()
@@ -53,10 +66,12 @@ struct MatchEndView: View {
 
                 Text(title)
                     .font(.system(size: 48, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(titleColor)
+                    .shadow(color: didWin ? .white.opacity(0.9) : .black.opacity(0.55), radius: 3, y: 1)
                 Text(message)
-                    .font(.title3)
-                    .foregroundStyle(.white.opacity(0.85))
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(messageColor)
+                    .shadow(color: didWin ? .white.opacity(0.8) : .black.opacity(0.5), radius: 2, y: 1)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -81,7 +96,11 @@ struct MatchEndView: View {
                             .foregroundStyle(.yellow)
                             .padding(.horizontal, 24)
                             .padding(.vertical, 10)
-                            .background(.black.opacity(0.3), in: Capsule())
+                            .background(
+                                Capsule()
+                                    .fill(Color(red: 0.3, green: 0.18, blue: 0.05).opacity(didWin ? 0.85 : 0.6))
+                                    .strokeBorder(Color.yellow.opacity(0.5), lineWidth: 1.5)
+                            )
                     }
                 }
 
@@ -104,7 +123,7 @@ struct MatchEndView: View {
                             .padding(.vertical, 6)
                     }
                     .buttonStyle(.bordered)
-                    .tint(.white)
+                    .tint(didWin ? Color(red: 0.45, green: 0.3, blue: 0.1) : .white)
                 }
 
                 Spacer()
