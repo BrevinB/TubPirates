@@ -5,6 +5,7 @@ struct SettingsView: View {
     @Environment(ProfileStore.self) private var profileStore
     @AppStorage("hapticsEnabled") private var hapticsEnabled = true
     @AppStorage("soundEnabled") private var soundEnabled = true
+    @AppStorage("musicEnabled") private var musicEnabled = true
     @AppStorage("debugAllShots") private var debugAllShots = false
     @State private var confirmReset = false
 
@@ -32,6 +33,10 @@ struct SettingsView: View {
     private var settingsList: some View {
         List {
             Section {
+                Toggle("Music", isOn: $musicEnabled)
+                    .onChange(of: musicEnabled) { _, on in
+                        SoundService.shared.musicSettingChanged(enabled: on)
+                    }
                 Toggle("Sound Effects", isOn: $soundEnabled)
                     .onChange(of: soundEnabled) { _, on in
                         if on { SoundService.shared.play(.pop) }

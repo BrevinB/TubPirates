@@ -44,9 +44,16 @@ final class SoundService {
     private var pools: [GameSound: [AVAudioPlayer]] = [:]
     private static let poolSize = 3
 
+    private var musicPlayer: AVAudioPlayer?
+
     private var enabled: Bool {
         let defaults = UserDefaults.standard
         return defaults.object(forKey: "soundEnabled") == nil || defaults.bool(forKey: "soundEnabled")
+    }
+
+    private var musicEnabled: Bool {
+        let defaults = UserDefaults.standard
+        return defaults.object(forKey: "musicEnabled") == nil || defaults.bool(forKey: "musicEnabled")
     }
 
     private init() {
@@ -77,5 +84,38 @@ final class SoundService {
         let player = pool.first { !$0.isPlaying } ?? pool.first
         player?.currentTime = 0
         player?.play()
+    }
+
+    // MARK: - Music
+
+    /// Starts the looping background track. Stays silent if the player is
+    /// already listening to their own music or podcast — their audio wins.
+    func startMusic() {
+        guard musicEnabled,
+              musicPlayer?.isPlaying != true,
+              !AVAudioSession.sharedInstance().isOtherAudioPlaying
+        else { return }
+        if musicPlayer == nil,
+           let url = Bundle.main.url(forResource: "music_main", withExtension: "m4a") {
+            musicPlayer = try? AVAudioPlayer(contentsOf: url)
+            musicPlayer?.numberOfLoops = -1
+            musicPlayer?.volume = 0 // fades in below
+        }
+        musicPlayer?.play()
+        musicPlayer?.setVolume(0.32, fadeDuration: 1.5)
+    }
+
+    func stopMusic() {
+        guard let musicPlayer, musicPlayer.isPlaying else { return }
+        musicPlayer.setVolume(0, fadeDuration: 0.6)
+        Task { [weak musicPlayer] in
+            try? await Task.sleep(for: .milliseconds(650))
+            musicPlayer?.pause()
+        }
+    }
+
+    /// Settings toggle hook.
+    func musicSettingChanged(enabled: Bool) {
+        if enabled { startMusic() } else { stopMusic() }
     }
 }
