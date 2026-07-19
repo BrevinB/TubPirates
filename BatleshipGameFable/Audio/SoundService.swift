@@ -42,7 +42,7 @@ final class SoundService {
     static let shared = SoundService()
 
     private var pools: [GameSound: [AVAudioPlayer]] = [:]
-    private static let poolSize = 3
+    private nonisolated static let poolSize = 3
 
     private var musicPlayer: AVAudioPlayer?
 
@@ -56,27 +56,47 @@ final class SoundService {
         return defaults.object(forKey: "musicEnabled") == nil || defaults.bool(forKey: "musicEnabled")
     }
 
-    private init() {
-        // .ambient respects the silent switch and mixes with Music/Podcasts.
-        try? AVAudioSession.sharedInstance().setCategory(.ambient, options: .mixWithOthers)
-        try? AVAudioSession.sharedInstance().setActive(true)
+    private var warmed = false
+    private var musicRequested = false
 
-        // Pre-warm the pools so the first shot doesn't hitch the game loop.
-        for sound in GameSound.allCases {
-            guard let url = Bundle.main.url(forResource: sound.rawValue, withExtension: "wav") else {
-                continue
+    private init() {}
+
+    /// Wraps non-Sendable AVAudioPlayers for the one-shot hop back to the
+    /// main actor after background preloading.
+    private struct TransferBox<T>: @unchecked Sendable { let value: T }
+
+    /// Configures the audio session and pre-warms the player pools off the
+    /// main thread — session activation blocks and would hitch app launch.
+    func warmUp() {
+        guard !warmed else { return }
+        warmed = true
+        Task.detached(priority: .utility) {
+            // .ambient respects the silent switch and mixes with Music/Podcasts.
+            let session = AVAudioSession.sharedInstance()
+            try? session.setCategory(.ambient, options: .mixWithOthers)
+            try? session.setActive(true)
+
+            var built: [GameSound: [AVAudioPlayer]] = [:]
+            for sound in GameSound.allCases {
+                guard let url = Bundle.main.url(forResource: sound.rawValue, withExtension: "wav") else {
+                    continue
+                }
+                built[sound] = (0..<Self.poolSize).compactMap { _ in
+                    let player = try? AVAudioPlayer(contentsOf: url)
+                    player?.volume = sound.volume
+                    player?.prepareToPlay()
+                    return player
+                }
             }
-            pools[sound] = (0..<Self.poolSize).compactMap { _ in
-                let player = try? AVAudioPlayer(contentsOf: url)
-                player?.volume = sound.volume
-                player?.prepareToPlay()
-                return player
+            let box = TransferBox(value: built)
+            await MainActor.run {
+                let service = SoundService.shared
+                service.pools = box.value
+                // Music asked for before the session was ready starts now.
+                if service.musicRequested { service.beginMusic() }
             }
         }
     }
-
-    /// Called once at app start to trigger the private init's pre-warm.
-    func warmUp() {}
 
     func play(_ sound: GameSound) {
         guard enabled, let pool = pools[sound] else { return }
@@ -90,7 +110,15 @@ final class SoundService {
 
     /// Starts the looping background track. Stays silent if the player is
     /// already listening to their own music or podcast — their audio wins.
+    /// Before the session finishes warming up, the request is queued and
+    /// honored from warmUp()'s completion.
     func startMusic() {
+        musicRequested = true
+        guard !pools.isEmpty else { return }
+        beginMusic()
+    }
+
+    private func beginMusic() {
         guard musicEnabled,
               musicPlayer?.isPlaying != true,
               !AVAudioSession.sharedInstance().isOtherAudioPlaying
