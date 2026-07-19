@@ -10,20 +10,39 @@ struct AvatarPickerView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVGrid(columns: columns, spacing: 18) {
-                    ForEach(Avatar.all) { avatar in
-                        avatarCell(avatar)
+            ZStack {
+                ScreenBackground(imageName: "tile_background")
+                RisingBubblesView()
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+
+                ScrollView {
+                    HStack {
+                        DoubloonLabel(amount: profileStore.coins, fontSize: 15)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(.black.opacity(0.35), in: Capsule())
+                        Spacer()
                     }
+                    .padding(.horizontal)
+                    Text("Choose Your Captain")
+                        .font(.system(size: 26, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color(red: 0.12, green: 0.3, blue: 0.52))
+                        .shadow(color: .white.opacity(0.9), radius: 2)
+                        .padding(.top, 2)
+                    LazyVGrid(columns: columns, spacing: 18) {
+                        ForEach(Avatar.all) { avatar in
+                            avatarCell(avatar)
+                        }
+                    }
+                    .padding()
                 }
-                .padding()
             }
-            .navigationTitle("Choose Your Captain")
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    DoubloonLabel(amount: profileStore.coins, fontSize: 15)
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
@@ -62,6 +81,7 @@ struct AvatarPickerView: View {
 
         return Button {
             if owned {
+                SoundService.shared.play(.pop)
                 profileStore.setAvatar(avatar.id)
             } else {
                 pendingPurchase = avatar
@@ -75,9 +95,10 @@ struct AvatarPickerView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
-                            .strokeBorder(selected ? Color.orange : .secondary.opacity(0.3),
-                                          lineWidth: selected ? 4 : 1.5)
+                            .strokeBorder(selected ? Color.orange : .white.opacity(0.9),
+                                          lineWidth: selected ? 4 : 3)
                     )
+                    .shadow(color: .black.opacity(0.18), radius: 5, y: 3)
                     .saturation(owned ? 1 : 0.55)
                     .overlay(alignment: .bottomTrailing) {
                         if selected {
@@ -105,8 +126,9 @@ struct AvatarPickerView: View {
                         }
                     }
                 Text(avatar.name)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.primary)
+                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Color(red: 0.12, green: 0.32, blue: 0.5))
+                    .shadow(color: .white.opacity(0.8), radius: 1.5)
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
                     .frame(width: 104)
