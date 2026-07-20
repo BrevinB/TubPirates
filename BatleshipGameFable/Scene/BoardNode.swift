@@ -136,11 +136,16 @@ final class BoardNode: SKNode {
         let texture = SKTexture(imageNamed: fleetSkin.textureName(for: ship.kind))
         let sprite = SKSpriteNode(texture: texture)
 
-        // Span the full footprint so ships honestly read as N cells long;
-        // breadth keeps the art's aspect, capped just past one cell.
-        let targetLength = CGFloat(ship.kind.length) * tileSize * 0.98
-        let naturalBreadth = texture.size().height * (targetLength / texture.size().width)
-        sprite.size = CGSize(width: targetLength, height: min(naturalBreadth, tileSize * 1.2))
+        // Fit inside the footprint box (N cells long, ~1.25 cells of breadth)
+        // WITHOUT distorting: squat toys sit centered on their cells instead
+        // of being stretched to span them.
+        let maxLength = CGFloat(ship.kind.length) * tileSize * 0.98
+        let maxBreadth = tileSize * 1.25
+        let scale = min(maxLength / texture.size().width, maxBreadth / texture.size().height)
+        sprite.size = CGSize(
+            width: texture.size().width * scale,
+            height: texture.size().height * scale
+        )
 
         // Midpoint of first and last occupied cell.
         let first = position(of: ship.cells.first!)

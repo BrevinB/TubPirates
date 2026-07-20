@@ -52,6 +52,13 @@ struct PlacementView: View {
     var body: some View {
         ZStack {
             ScreenBackground(imageName: "placement_background")
+                .onAppear {
+                    // Debug: pre-place a random fleet for screenshots.
+                    if CommandLine.arguments.contains("-randomize"), board.ships.isEmpty {
+                        var rng = SystemRandomNumberGenerator()
+                        board = Board.randomlyPlaced(using: &rng)
+                    }
+                }
 
             VStack(spacing: 10) {
                 Text("Place Your Fleet")
@@ -139,9 +146,10 @@ struct PlacementView: View {
                 ForEach(board.ships) { ship in
                     Image(shipImage(ship.kind))
                         .resizable()
+                        .scaledToFit() // preserve the toy's aspect inside its footprint
                         .frame(
                             width: cellSize * CGFloat(ship.kind.length) * 0.98,
-                            height: cellSize * 0.95
+                            height: cellSize * 1.2
                         )
                         .rotationEffect(ship.orientation == .horizontal ? .zero : .degrees(90))
                         .position(shipCenter(ship, cellSize: cellSize))
@@ -154,9 +162,10 @@ struct PlacementView: View {
                 if let kind = draggingKind {
                     Image(shipImage(kind))
                         .resizable()
+                        .scaledToFit()
                         .frame(
                             width: cellSize * CGFloat(kind.length),
-                            height: cellSize
+                            height: cellSize * 1.2
                         )
                         .rotationEffect(dragOrientation == .horizontal ? .zero : .degrees(90))
                         .position(ghostCenter(cellSize: cellSize))
