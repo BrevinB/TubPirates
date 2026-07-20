@@ -77,6 +77,7 @@ struct MainMenuView: View {
                         menuButton("Resume Battle", icon: "play.fill", tint: .green) {
                             path.append(.match(MatchConfig(
                                 mode: .ai,
+                                loadout: battleLoadout,
                                 consumesInventory: !debugAllShots,
                                 resume: true
                             )))

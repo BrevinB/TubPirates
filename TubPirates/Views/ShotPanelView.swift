@@ -5,8 +5,10 @@ import BathtubEngine
 /// mirrors the original game's cannon list with tooltips.
 struct ShotPanelView: View {
     @Bindable var viewModel: MatchViewModel
+    @Environment(ProfileStore.self) private var profileStore
     @State private var tooltipShot: ShotType?
     @State private var confirmFlare = false
+    @State private var pendingPurchase: ShotType?
 
     private static let iconNames: [ShotType: String] = [
         .cannon: "icon_cannon", .parrotScout: "icon_parrot", .bigShot: "icon_bigshot",
@@ -46,6 +48,35 @@ struct ShotPanelView: View {
         } message: {
             Text(ShotType.flare.spec.blurb)
         }
+        .confirmationDialog(
+            pendingPurchase.map { "Buy \($0.spec.displayName) for \($0.spec.coinCost) doubloons?" } ?? "",
+            isPresented: Binding(
+                get: { pendingPurchase != nil },
+                set: { if !$0 { pendingPurchase = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let shot = pendingPurchase {
+                if profileStore.coins >= shot.spec.coinCost {
+                    Button("Buy & Arm") {
+                        if profileStore.buyUse(of: shot) {
+                            viewModel.armPurchasedShot(shot)
+                            SoundService.shared.play(.coin)
+                        }
+                        pendingPurchase = nil
+                    }
+                }
+                Button("Cancel", role: .cancel) { pendingPurchase = nil }
+            }
+        } message: {
+            if let shot = pendingPurchase {
+                if profileStore.coins >= shot.spec.coinCost {
+                    Text("It arms immediately for this battle.")
+                } else {
+                    Text("Ye need \(shot.spec.coinCost - profileStore.coins) more doubloons, matey.")
+                }
+            }
+        }
     }
 
     private func shotButton(_ shot: ShotType, remaining: Int?) -> some View {
@@ -53,7 +84,14 @@ struct ShotPanelView: View {
         let selected = viewModel.selectedShot == shot && !shot.spec.needsTarget == false
 
         return Button {
-            if spent { return }
+            if spent {
+                // Empty slot: offer a doubloon refill when eligible.
+                if viewModel.canOfferPurchase(of: shot) {
+                    SoundService.shared.play(.tap)
+                    pendingPurchase = shot
+                }
+                return
+            }
             SoundService.shared.play(.tap)
             if shot == .flare {
                 confirmFlare = true
@@ -77,7 +115,16 @@ struct ShotPanelView: View {
                 .saturation(spent ? 0.1 : 1)
                 .opacity(spent ? 0.5 : 1)
                 .overlay(alignment: .topTrailing) {
-                    if let remaining {
+                    if spent, viewModel.canOfferPurchase(of: shot) {
+                        // Buyable refill: coin badge instead of the gray zero.
+                        Image("coin_doubloon")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 17, height: 17)
+                            .padding(3)
+                            .background(Color.orange, in: Circle())
+                            .offset(x: 5, y: -5)
+                    } else if let remaining {
                         Text("\(remaining)")
                             .font(.system(size: 11, weight: .heavy, design: .rounded))
                             .foregroundStyle(.white)

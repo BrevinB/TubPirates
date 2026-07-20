@@ -39,6 +39,19 @@ public struct GameState: Codable, Sendable {
 
     // MARK: - Queries
 
+    /// Arms a special mid-match (consumable bought from the stash). Keeps the
+    /// one-use-per-special-per-match cap: refuses if the shot is already
+    /// armed or was already fired by this player in this match.
+    /// Returns true when the use was granted.
+    @discardableResult
+    public mutating func enableShot(_ shot: ShotType, for player: PlayerID) -> Bool {
+        guard shot != .cannon, shot.spec.usesPerMatch != nil else { return false }
+        guard (remainingUses[player]?[shot] ?? 0) == 0 else { return false }
+        guard !moveLog.contains(where: { $0.player == player && $0.shot == shot }) else { return false }
+        remainingUses[player, default: [:]][shot] = shot.spec.usesPerMatch ?? 1
+        return true
+    }
+
     public func remainingUses(of shot: ShotType, for player: PlayerID) -> Int? {
         if shot.spec.usesPerMatch == nil { return nil } // unlimited
         return remainingUses[player]?[shot] ?? 0

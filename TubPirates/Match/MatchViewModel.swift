@@ -172,6 +172,13 @@ final class MatchViewModel {
             state = saved.state
             activePlayer = saved.state.currentPlayer
             opponent = saved.mode == .ai ? AIOpponentController(captain: savedCaptain) : nil
+            if mode == .ai, config.consumesInventory {
+                // The stash is live: specials bought since leaving arm on
+                // return (the per-match cap still holds inside enableShot).
+                for shot in config.loadout where shot != .cannon {
+                    state.enableShot(shot, for: fixedLocalPlayer)
+                }
+            }
             return
         }
 
@@ -332,6 +339,22 @@ final class MatchViewModel {
         guard turnState == .playerTargeting else { return }
         guard state.remainingUses(of: shot, for: localPlayer) ?? 1 > 0 else { return }
         selectedShot = shot
+    }
+
+    /// Can this empty special slot be refilled with doubloons right now?
+    /// (Real-economy AI battles only; the once-per-match cap still applies.)
+    func canOfferPurchase(of shot: ShotType) -> Bool {
+        guard mode == .ai, consumesInventory, shot != .cannon else { return false }
+        guard (state.remainingUses(of: shot, for: localPlayer) ?? 1) == 0 else { return false }
+        return !state.moveLog.contains { $0.player == localPlayer && $0.shot == shot }
+    }
+
+    /// Arms a special the player just bought mid-battle and selects it.
+    func armPurchasedShot(_ shot: ShotType) {
+        guard state.enableShot(shot, for: localPlayer) else { return }
+        if turnState == .playerTargeting {
+            selectedShot = shot
+        }
     }
 
     func toggleOrientation() {

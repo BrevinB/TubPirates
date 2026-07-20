@@ -165,3 +165,47 @@ struct TurnResolutionTests {
         #expect(replayed.currentPlayer == state.currentPlayer)
     }
 }
+
+@Suite("Mid-match shot purchases")
+struct EnableShotTests {
+    @Test func grantsAnUnownedSpecial() throws {
+        var state = makeState()
+        #expect(state.remainingUses(of: .bigShot, for: .one) == 0)
+        let granted = state.enableShot(.bigShot, for: .one)
+        #expect(granted)
+        #expect(state.remainingUses(of: .bigShot, for: .one) == 1)
+        // And it actually fires.
+        _ = try state.apply(Move(player: .one, shot: .bigShot, target: Coordinate(row: 4, col: 4)))
+        #expect(state.remainingUses(of: .bigShot, for: .one) == 0)
+    }
+
+    @Test func refusesWhenAlreadyArmed() {
+        var state = makeState(loadouts: [.one: [.bigShot]])
+        let granted = state.enableShot(.bigShot, for: .one)
+        #expect(!granted)
+        #expect(state.remainingUses(of: .bigShot, for: .one) == 1)
+    }
+
+    @Test func refusesAfterFiringThisMatch() throws {
+        var state = makeState(loadouts: [.one: [.bigShot]])
+        _ = try state.apply(Move(player: .one, shot: .bigShot, target: Coordinate(row: 4, col: 4)))
+        // The per-match cap holds: no re-buying a special already fired.
+        let granted = state.enableShot(.bigShot, for: .one)
+        #expect(!granted)
+        #expect(state.remainingUses(of: .bigShot, for: .one) == 0)
+    }
+
+    @Test func refusesCannon() {
+        var state = makeState()
+        let granted = state.enableShot(.cannon, for: .one)
+        #expect(!granted)
+    }
+
+    @Test func grantSurvivesCodableRoundTrip() throws {
+        var state = makeState()
+        state.enableShot(.flare, for: .one)
+        let data = try JSONEncoder().encode(state)
+        let decoded = try JSONDecoder().decode(GameState.self, from: data)
+        #expect(decoded.remainingUses(of: .flare, for: .one) == 1)
+    }
+}
