@@ -11,13 +11,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		2334E096300888030025490E /* BatleshipGameFable.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BatleshipGameFable.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2334E096300888030025490E /* TubPirates.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TubPirates.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		2334E098300888030025490E /* BatleshipGameFable */ = {
+		2334E098300888030025490E /* TubPirates */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = BatleshipGameFable;
+			path = TubPirates;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -37,7 +37,7 @@
 		2334E08D300888030025490E = {
 			isa = PBXGroup;
 			children = (
-				2334E098300888030025490E /* BatleshipGameFable */,
+				2334E098300888030025490E /* TubPirates */,
 				2334E097300888030025490E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -45,7 +45,7 @@
 		2334E097300888030025490E /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				2334E096300888030025490E /* BatleshipGameFable.app */,
+				2334E096300888030025490E /* TubPirates.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -53,9 +53,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		2334E095300888030025490E /* BatleshipGameFable */ = {
+		2334E095300888030025490E /* TubPirates */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 2334E0A1300888050025490E /* Build configuration list for PBXNativeTarget "BatleshipGameFable" */;
+			buildConfigurationList = 2334E0A1300888050025490E /* Build configuration list for PBXNativeTarget "TubPirates" */;
 			buildPhases = (
 				2334E092300888030025490E /* Sources */,
 				2334E093300888030025490E /* Frameworks */,
@@ -66,14 +66,14 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				2334E098300888030025490E /* BatleshipGameFable */,
+				2334E098300888030025490E /* TubPirates */,
 			);
-			name = BatleshipGameFable;
+			name = TubPirates;
 			packageProductDependencies = (
 				BE00000000000000000000A3 /* BathtubEngine */,
 			);
-			productName = BatleshipGameFable;
-			productReference = 2334E096300888030025490E /* BatleshipGameFable.app */;
+			productName = TubPirates;
+			productReference = 2334E096300888030025490E /* TubPirates.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -91,7 +91,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 2334E091300888030025490E /* Build configuration list for PBXProject "BatleshipGameFable" */;
+			buildConfigurationList = 2334E091300888030025490E /* Build configuration list for PBXProject "TubPirates" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -108,7 +108,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				2334E095300888030025490E /* BatleshipGameFable */,
+				2334E095300888030025490E /* TubPirates */,
 			);
 		};
 /* End PBXProject section */
@@ -255,7 +255,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = BatleshipGameFable/BatleshipGameFable.entitlements;
+				CODE_SIGN_ENTITLEMENTS = TubPirates/TubPirates.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = YFXZ6WNN53;
@@ -280,7 +280,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = co.brevinb.BatleshipGameFable;
+				PRODUCT_BUNDLE_IDENTIFIER = co.brevinb.TubPirates;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -301,7 +301,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = BatleshipGameFable/BatleshipGameFable.entitlements;
+				CODE_SIGN_ENTITLEMENTS = TubPirates/TubPirates.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = YFXZ6WNN53;
@@ -326,7 +326,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = co.brevinb.BatleshipGameFable;
+				PRODUCT_BUNDLE_IDENTIFIER = co.brevinb.TubPirates;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -345,7 +345,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		2334E091300888030025490E /* Build configuration list for PBXProject "BatleshipGameFable" */ = {
+		2334E091300888030025490E /* Build configuration list for PBXProject "TubPirates" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2334E09F300888050025490E /* Debug */,
@@ -354,7 +354,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		2334E0A1300888050025490E /* Build configuration list for PBXNativeTarget "BatleshipGameFable" */ = {
+		2334E0A1300888050025490E /* Build configuration list for PBXNativeTarget "TubPirates" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2334E0A2300888050025490E /* Debug */,
