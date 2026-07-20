@@ -85,8 +85,9 @@ struct ShotPanelView: View {
 
         return Button {
             if spent {
-                // Empty slot: offer a doubloon refill when eligible.
-                if viewModel.canOfferPurchase(of: shot) {
+                // Empty slot: offer a doubloon refill when eligible — the
+                // armory ladder gate applies in battle too.
+                if viewModel.canOfferPurchase(of: shot), profileStore.isShotInStock(shot) {
                     SoundService.shared.play(.tap)
                     pendingPurchase = shot
                 }
@@ -115,7 +116,7 @@ struct ShotPanelView: View {
                 .saturation(spent ? 0.1 : 1)
                 .opacity(spent ? 0.5 : 1)
                 .overlay(alignment: .topTrailing) {
-                    if spent, viewModel.canOfferPurchase(of: shot) {
+                    if spent, viewModel.canOfferPurchase(of: shot), profileStore.isShotInStock(shot) {
                         // Buyable refill: coin badge instead of the gray zero.
                         Image("coin_doubloon")
                             .resizable()
