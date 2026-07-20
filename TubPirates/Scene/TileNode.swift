@@ -12,7 +12,15 @@ final class TileNode: SKSpriteNode {
         case revealedWater
     }
 
-    static let waterColor = SKColor(red: 0.42, green: 0.72, blue: 0.93, alpha: 0.85)
+    /// Alternating translucent water tints — checkered like the placement
+    /// grid, and see-through enough that the tub art breathes underneath.
+    static func waterColor(for cell: Coordinate) -> SKColor {
+        (cell.row + cell.col).isMultiple(of: 2)
+            ? SKColor(red: 0.45, green: 0.74, blue: 0.94, alpha: 0.62)
+            : SKColor(red: 0.55, green: 0.8, blue: 0.96, alpha: 0.48)
+    }
+
+    private var waterColor: SKColor { Self.waterColor(for: cell) }
 
     let cell: Coordinate
     private(set) var mark: Mark = .none
@@ -20,7 +28,8 @@ final class TileNode: SKSpriteNode {
 
     init(cell: Coordinate, size: CGFloat) {
         self.cell = cell
-        super.init(texture: nil, color: Self.waterColor, size: CGSize(width: size - 1.5, height: size - 1.5))
+        super.init(texture: nil, color: .clear, size: CGSize(width: size - 1.5, height: size - 1.5))
+        color = waterColor
     }
 
     @available(*, unavailable)
@@ -34,10 +43,10 @@ final class TileNode: SKSpriteNode {
 
         switch newMark {
         case .none:
-            color = Self.waterColor
+            color = waterColor
         case .miss:
-            color = SKColor(red: 0.85, green: 0.93, blue: 1, alpha: 0.95)
-            addMarkLabel("•", color: .white, scale: 1.4)
+            color = SKColor(red: 0.78, green: 0.89, blue: 0.98, alpha: 0.9)
+            addSplashRing()
         case .hit:
             color = SKColor(red: 0.88, green: 0.22, blue: 0.15, alpha: 1)
             addMarkLabel("✕", color: SKColor(white: 0.1, alpha: 1))
@@ -46,6 +55,24 @@ final class TileNode: SKSpriteNode {
         case .revealedWater:
             color = SKColor(red: 0.62, green: 0.87, blue: 0.99, alpha: 0.9)
         }
+    }
+
+    /// Miss mark: a splash ripple — ring + droplet dot — far more legible
+    /// than the old faint dot, without competing with the red hit X.
+    private func addSplashRing() {
+        let container = SKNode()
+        let ring = SKShapeNode(circleOfRadius: size.width * 0.26)
+        ring.strokeColor = SKColor(white: 1, alpha: 0.95)
+        ring.lineWidth = size.width * 0.09
+        ring.fillColor = .clear
+        container.addChild(ring)
+        let drop = SKShapeNode(circleOfRadius: size.width * 0.07)
+        drop.fillColor = SKColor(white: 1, alpha: 0.95)
+        drop.strokeColor = .clear
+        container.addChild(drop)
+        container.zPosition = 5
+        addChild(container)
+        markNode = container
     }
 
     private func addMarkLabel(_ text: String, color: SKColor, scale: CGFloat = 1.0) {

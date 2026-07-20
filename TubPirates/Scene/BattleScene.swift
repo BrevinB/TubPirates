@@ -48,8 +48,8 @@ final class BattleScene: SKScene, BattleSceneRendering {
 
         // Enemy board: large diamond kept inside the tub's water circle —
         // sized and lowered toward the circle's center so the tips stay wet.
-        enemyBoard.setScale(w * 0.82 / BoardNode.baseDiagonal)
-        enemyBoard.position = CGPoint(x: w / 2, y: h * 0.575)
+        enemyBoard.setScale(w * 0.88 / BoardNode.baseDiagonal)
+        enemyBoard.position = CGPoint(x: w / 2, y: h * 0.55)
 
         // Own board: small diamond beached in the suds at the bottom-left,
         // off the tub's water so it reads as "your side of the bathroom".

@@ -61,7 +61,10 @@ struct RootView: View {
             gameCenter.authenticate()
             let args = CommandLine.arguments
             // -welcome forces the story for testing; otherwise first launch only.
-            if !profileStore.hasSeenWelcome || args.contains("-welcome") {
+            // Debug deep links (-autoBattle / -screen) suppress it so headless
+            // runs land where they aimed.
+            let debugLaunch = args.contains("-autoBattle") || args.contains("-screen")
+            if args.contains("-welcome") || (!profileStore.hasSeenWelcome && !debugLaunch) {
                 showWelcome = true
             }
             // Debug: -avatar <assetID> pre-selects a captain portrait for testing.
