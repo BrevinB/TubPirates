@@ -11,13 +11,19 @@ final class GameCenterController: OpponentController {
     /// How many moves of the shared log we've already seen/applied locally.
     private var knownMoveCount = 0
     private var pendingMove: CheckedContinuation<Move?, Never>?
-    /// Moves that arrived before anyone awaited them.
-    private var queuedMoves: [Move] = []
+    /// Opponent moves that arrived before anyone awaited them, tagged with
+    /// their absolute moveLog index so a rejoin can discard ones already
+    /// baked into the freshly loaded state.
+    private var queuedMoves: [(index: Int, move: Move)] = []
     /// Set when the opponent quit/lost via Game Center rather than gameplay.
     private(set) var opponentForfeited = false
     /// Invoked once when match data first carries an initialized GameState
     /// (the creator waits here while the opponent places their fleet).
     var onStateReady: ((GameState) -> Void)?
+    /// Our placed fleet, parked when we tried to set up while the other
+    /// participant still held the turn (only the current participant may
+    /// write match data). Submitted from the turn event that makes us current.
+    var pendingSetupBoard: Board?
 
     init(match: GKTurnBasedMatch, localPlayer: PlayerID) {
         self.match = match
@@ -91,8 +97,11 @@ final class GameCenterController: OpponentController {
     /// Returns nil when the opponent forfeits.
     func nextMove(state: GameState) async -> Move? {
         markKnown(state: state)
+        // A rejoin loads a state that already contains previously queued
+        // moves — replaying them would corrupt the turn machine.
+        queuedMoves.removeAll { $0.index < state.moveLog.count }
         if !queuedMoves.isEmpty {
-            return queuedMoves.removeFirst()
+            return queuedMoves.removeFirst().move
         }
         if opponentForfeited {
             return nil
@@ -102,14 +111,38 @@ final class GameCenterController: OpponentController {
         }
     }
 
+    /// Unblocks (and abandons) any pending wait — used when the local player
+    /// backs out of the match screen so the awaiting task doesn't dangle.
+    func cancelWaiting() {
+        pendingMove?.resume(returning: nil)
+        pendingMove = nil
+    }
+
     /// Called by GameCenterService when Game Center delivers updated match data.
     func handleTurnEvent(_ updatedMatch: GKTurnBasedMatch) {
-        // Opponent quit → hand the win to the local player.
+        // Opponent quit or timed out → hand the win to the local player.
         let opponentQuit = updatedMatch.participants.contains {
-            $0.player?.gamePlayerID != GKLocalPlayer.local.gamePlayerID && $0.matchOutcome == .quit
+            $0.player?.gamePlayerID != GKLocalPlayer.local.gamePlayerID
+                && ($0.matchOutcome == .quit || $0.matchOutcome == .timeout)
         }
 
         let data = MatchDataCodec.decode(updatedMatch.matchData)
+
+        // Deferred setup: we placed before the turn was ours; now that the
+        // other captain has moved on, contribute our fleet.
+        if data.state == nil, let board = pendingSetupBoard,
+           updatedMatch.currentParticipant?.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID {
+            pendingSetupBoard = nil
+            Task {
+                guard let newData = try? await submitSetup(board: board),
+                      let state = newData.state else { return }
+                let callback = onStateReady
+                onStateReady = nil
+                callback?(state)
+            }
+            return
+        }
+
         if let state = data.state {
             // First sight of an initialized game (creator was waiting on opponent setup).
             if let onStateReady {
@@ -117,14 +150,18 @@ final class GameCenterController: OpponentController {
                 markKnown(state: state)
                 onStateReady(state)
             } else {
-                let newMoves = Array(state.moveLog.dropFirst(knownMoveCount))
-                knownMoveCount = state.moveLog.count
-                for move in newMoves where move.player != localPlayer {
+                let log = state.moveLog
+                // A stale event can carry fewer moves than we've seen locally.
+                let firstNew = min(knownMoveCount, log.count)
+                knownMoveCount = max(knownMoveCount, log.count)
+                for index in firstNew..<log.count {
+                    let move = log[index]
+                    guard move.player != localPlayer else { continue }
                     if let continuation = pendingMove {
                         pendingMove = nil
                         continuation.resume(returning: move)
                     } else {
-                        queuedMoves.append(move)
+                        queuedMoves.append((index: index, move: move))
                     }
                 }
             }

@@ -93,6 +93,28 @@ extension GameCenterService: GKLocalPlayerListener {
             controllers[match.matchID]?.handleTurnEvent(match)
         }
     }
+
+    /// The user deleted/quit the match from Game Center's own UI — resign
+    /// properly so the opponent is handed the win instead of a dead match.
+    nonisolated func player(_ player: GKPlayer, wantsToQuitMatch match: GKTurnBasedMatch) {
+        Task { @MainActor in
+            let isOurTurn = match.currentParticipant?.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID
+            if isOurTurn {
+                let next = match.participants.filter {
+                    $0.player?.gamePlayerID != GKLocalPlayer.local.gamePlayerID
+                }
+                try? await match.participantQuitInTurn(
+                    with: .quit,
+                    nextParticipants: next,
+                    turnTimeout: GKTurnTimeoutDefault,
+                    match: match.matchData ?? Data()
+                )
+            } else {
+                try? await match.participantQuitOutOfTurn(with: .quit)
+            }
+            controllers[match.matchID] = nil
+        }
+    }
 }
 
 // MARK: - Matchmaker sheet

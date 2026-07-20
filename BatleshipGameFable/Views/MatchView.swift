@@ -1,5 +1,6 @@
 import SwiftUI
 import SpriteKit
+import GameKit
 import BathtubEngine
 
 struct MatchView: View {
@@ -93,7 +94,7 @@ private struct MatchContentView: View {
                 }
             }
             if case .finished = newState {
-                if let viewModel, !rewardApplied {
+                if let viewModel, !rewardApplied, !viewModel.arrivedFinished {
                     rewardApplied = true
                     var reward = viewModel.coinReward
                     // First AI-battle win each day pays double — but the
@@ -245,7 +246,16 @@ private struct MatchContentView: View {
             isPresented: $confirmLeave,
             titleVisibility: .visible
         ) {
-            Button("Leave") { path.removeAll() }
+            Button("Leave") {
+                if case .gameCenter(let matchID) = viewModel.mode {
+                    // Unblocking the wait resolves it as a forfeit on the
+                    // abandoned view model — make sure that can't pay out.
+                    rewardApplied = true
+                    GameCenterService.shared.controller(for: matchID)?.cancelWaiting()
+                    GameCenterService.shared.releaseController(for: matchID)
+                }
+                path.removeAll()
+            }
             Button("Keep Fighting", role: .cancel) {}
         } message: {
             if case .gameCenter = viewModel.mode {
@@ -325,7 +335,14 @@ private struct MatchContentView: View {
                 var data = try await GameCenterController.loadGame(from: match)
                 let seatKey = seat == .one ? "0" : "1"
                 if data.boards[seatKey] == nil, let board = config.playerBoard {
-                    data = try await controller.submitSetup(board: board)
+                    // Only the current participant may write match data. If the
+                    // rival is still placing (simultaneous auto-match), park our
+                    // fleet — the controller submits it when the turn arrives.
+                    if match.currentParticipant?.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID {
+                        data = try await controller.submitSetup(board: board)
+                    } else {
+                        controller.pendingSetupBoard = board
+                    }
                 }
                 if let state = data.state {
                     waitingForOpponent = false

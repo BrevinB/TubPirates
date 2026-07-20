@@ -246,6 +246,10 @@ final class MatchViewModel {
         return state
     }
 
+    /// True when the loaded match was already over — the end screen should
+    /// show, but rewards were paid when it actually finished.
+    private(set) var arrivedFinished = false
+
     /// Online matches arrive with a server-synced state and an assigned seat.
     init(gameCenterState: GameState, localPlayer: PlayerID, controller: GameCenterController) {
         consumesInventory = false
@@ -256,10 +260,17 @@ final class MatchViewModel {
         state = gameCenterState
         opponent = controller
         controller.markKnown(state: gameCenterState)
+        arrivedFinished = state.phase != .active
     }
 
     /// Called once the scene is wired up; kicks off auto-play when enabled.
     func matchDidStart() {
+        // Revisiting a match that already ended (e.g. from Game Center's
+        // match list): straight to the end state, no listening for turns.
+        if case .finished(let winner) = state.phase {
+            turnState = .finished(winner: winner)
+            return
+        }
         saveIfNeeded()
         if mode == .ai, state.moveLog.isEmpty {
             speak(.matchStart)
