@@ -43,6 +43,7 @@ struct ArmoryView: View {
     private func shotCard(_ shot: ShotType) -> some View {
         let owned = profileStore.inventory(of: shot)
         let affordable = profileStore.coins >= shot.spec.coinCost
+        let inStock = profileStore.isShotInStock(shot)
 
         return HStack(spacing: 14) {
             Image(Self.iconNames[shot] ?? "icon_cannon")
@@ -50,50 +51,72 @@ struct ArmoryView: View {
                 .scaledToFill()
                 .frame(width: 64, height: 64)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
+                .saturation(inStock ? 1 : 0)
                 .overlay(alignment: .topTrailing) {
-                    Text("×\(owned)")
-                        .font(.system(size: 12, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(owned > 0 ? Color.blue : .gray, in: Capsule())
-                        .offset(x: 8, y: -8)
+                    if inStock {
+                        Text("×\(owned)")
+                            .font(.system(size: 12, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(owned > 0 ? Color.blue : .gray, in: Capsule())
+                            .offset(x: 8, y: -8)
+                    }
+                }
+                .overlay {
+                    if !inStock {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundStyle(.white)
+                            .shadow(color: .black.opacity(0.6), radius: 2)
+                    }
                 }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(shot.spec.displayName)
                     .font(.system(size: 17, weight: .heavy, design: .rounded))
                     .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.08))
-                Text(shot.spec.blurb)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color(red: 0.45, green: 0.3, blue: 0.15))
+                if inStock {
+                    Text(shot.spec.blurb)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color(red: 0.45, green: 0.3, blue: 0.15))
+                } else if let requirement = profileStore.armoryRequirement(for: shot) {
+                    Label(
+                        "Defeat \(requirement.name) ×\(requirement.winsToAdvance) to stock this",
+                        systemImage: "lock.fill"
+                    )
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color(red: 0.7, green: 0.4, blue: 0.1))
+                }
             }
 
             Spacer()
 
-            Button {
-                withAnimation {
-                    if profileStore.buyUse(of: shot) {
-                        SoundService.shared.play(.coin)
+            if inStock {
+                Button {
+                    withAnimation {
+                        if profileStore.buyUse(of: shot) {
+                            SoundService.shared.play(.coin)
+                        }
                     }
+                } label: {
+                    VStack(spacing: 2) {
+                        DoubloonLabel(amount: shot.spec.coinCost, fontSize: 14)
+                        Text("Buy 1")
+                            .font(.system(size: 11, weight: .bold))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
                 }
-            } label: {
-                VStack(spacing: 2) {
-                    DoubloonLabel(amount: shot.spec.coinCost, fontSize: 14)
-                    Text("Buy 1")
-                        .font(.system(size: 11, weight: .bold))
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
+                .buttonStyle(.borderedProminent)
+                .tint(affordable ? .orange : .gray)
+                .disabled(!affordable)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(affordable ? .orange : .gray)
-            .disabled(!affordable)
         }
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(red: 1, green: 0.96, blue: 0.85))
+                .fill(Color(red: 1, green: 0.96, blue: 0.85).opacity(inStock ? 1 : 0.75))
                 .strokeBorder(Color(red: 0.6, green: 0.42, blue: 0.22), lineWidth: 2.5)
                 .shadow(color: .black.opacity(0.4), radius: 5, y: 3)
         )

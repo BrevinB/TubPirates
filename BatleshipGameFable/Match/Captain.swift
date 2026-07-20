@@ -32,7 +32,7 @@ struct Captain: Identifiable, Equatable {
     static func == (lhs: Captain, rhs: Captain) -> Bool { lhs.id == rhs.id }
 
     /// The ladder, easiest to hardest.
-    static let roster: [Captain] = [.dogbeard, .soapySal, .admiralBubbles]
+    static let roster: [Captain] = [.dogbeard, .soapySal, .barnacleBess, .admiralBubbles]
 
     static func withID(_ id: String?) -> Captain {
         roster.first { $0.id == id } ?? .dogbeard
@@ -133,7 +133,7 @@ extension Captain {
         sloppiness: 0.10,
         specialUseChance: 0.22,
         rewardMultiplier: 1.5,
-        winsToAdvance: 3,
+        winsToAdvance: 4,
         lines: [
             .matchStart: [
                 "Well well... fresh prey paddles into my tub~",
@@ -174,6 +174,59 @@ extension Captain {
                 "Sunk! Like a catnip mouse in the water bowl.",
                 "Meowhahaha! Down it goes!",
                 "Another one for my trophy shelf~",
+            ],
+        ]
+    )
+
+    static let barnacleBess = Captain(
+        id: "barnacleBess",
+        name: "Barnacle Bess",
+        portrait: "portrait_bess",
+        blurb: "Eight arms, eight cannons, zero patience. The tub's toughest scrubber.",
+        sloppiness: 0.06,
+        specialUseChance: 0.26,
+        rewardMultiplier: 1.75,
+        winsToAdvance: 5,
+        lines: [
+            .matchStart: [
+                "Eight arms, little squid. Ye can't watch 'em all.",
+                "I scrubbed the barnacles off tougher hulls than yers.",
+                "Ink runs cold in these waters, matey.",
+            ],
+            .playerHit: [
+                "Ow! Right in tentacle number six!",
+                "Ye grazed me, guppy. I have seven spares.",
+                "Lucky splash. Won't happen twice.",
+            ],
+            .playerMiss: [
+                "Ha! Me garden squirts better than that!",
+                "All that noise, not a single sucker touched.",
+                "Yer aim's as slippery as me soap bar.",
+            ],
+            .playerSunkShip: [
+                "Me boat! Ye'll scrub the whole tub for that!",
+                "INK IT ALL! That one had sentimental value!",
+                "Fine. FINE. I've got arms to spare and grudges to hold.",
+            ],
+            .playerSpecial: [
+                "Shiny trinkets? I juggle eight at once, matey.",
+                "Ooh, fancy. I'll be takin' that when ye sink.",
+                "Gadgets... how adorably two-armed of ye.",
+            ],
+            .captainHit: [
+                "Sucker punch! Literally!",
+                "One arm aims, seven arms applaud.",
+                "Splash! Right where I was pointin'. All eight times.",
+            ],
+            .captainMiss: [
+                "Blast! Soap in me eye. ALL of them.",
+                "That arm's fired. The other seven are laughin'.",
+                "A warning shot. Ye've been warned eightfold.",
+            ],
+            .captainSunkShip: [
+                "Down she goes! Give her a good scrub on the way!",
+                "Eight arms of applause for MEEE!",
+                "Glub glub, little toy. The drain awaits.",
             ],
         ]
     )

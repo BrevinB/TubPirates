@@ -59,6 +59,21 @@ final class ProfileStore {
 
     // MARK: - Captain ladder
 
+    /// Ladder-gated armory stock: the big booms arrive as captains fall,
+    /// so beating a rival also unlocks new toys to buy.
+    func armoryRequirement(for shot: ShotType) -> Captain? {
+        switch shot {
+        case .chainShot: .dogbeard
+        case .fireworks: .soapySal
+        default: nil
+        }
+    }
+
+    func isShotInStock(_ shot: ShotType) -> Bool {
+        guard let requirement = armoryRequirement(for: shot) else { return true }
+        return wins(against: requirement) >= requirement.winsToAdvance
+    }
+
     func wins(against captain: Captain) -> Int {
         profile.captainWins[captain.id] ?? 0
     }

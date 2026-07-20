@@ -18,7 +18,7 @@ struct CaptainsView: View {
                         .font(.system(size: 30, weight: .heavy, design: .rounded))
                         .foregroundStyle(Color(red: 1, green: 0.94, blue: 0.8))
                         .shadow(color: .black.opacity(0.55), radius: 3, y: 2)
-                    Text("Sink a captain's fleet 3 times to face the next!")
+                    Text("Sink each captain's fleet to face the next rival!")
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(Color(red: 1, green: 0.94, blue: 0.8).opacity(0.85))
                         .shadow(color: .black.opacity(0.5), radius: 2, y: 1)
