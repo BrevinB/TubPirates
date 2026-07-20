@@ -15,6 +15,7 @@ struct MatchEndView: View {
     let message: String
     let coinReward: Int
     var firstWinBonus: Bool = false
+    var showRematch: Bool = true
     let onRematch: () -> Void
     let onExit: () -> Void
 
@@ -107,23 +108,35 @@ struct MatchEndView: View {
                 Spacer()
 
                 VStack(spacing: 14) {
-                    Button(action: onRematch) {
-                        Label("Rematch", systemImage: "arrow.clockwise")
-                            .font(.title3.weight(.bold))
-                            .frame(maxWidth: 300)
-                            .padding(.vertical, 6)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.orange)
+                    if showRematch {
+                        Button(action: onRematch) {
+                            Label("Rematch", systemImage: "arrow.clockwise")
+                                .font(.title3.weight(.bold))
+                                .frame(maxWidth: 300)
+                                .padding(.vertical, 6)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.orange)
 
-                    Button(action: onExit) {
-                        Text("Main Menu")
-                            .font(.title3.weight(.semibold))
-                            .frame(maxWidth: 300)
-                            .padding(.vertical, 6)
+                        Button(action: onExit) {
+                            Text("Main Menu")
+                                .font(.title3.weight(.semibold))
+                                .frame(maxWidth: 300)
+                                .padding(.vertical, 6)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(didWin ? Color(red: 0.45, green: 0.3, blue: 0.1) : .white)
+                    } else {
+                        // Tutorial: onward to the real adventure.
+                        Button(action: onExit) {
+                            Label("Set Sail!", systemImage: "flag.checkered")
+                                .font(.title3.weight(.bold))
+                                .frame(maxWidth: 300)
+                                .padding(.vertical, 6)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.orange)
                     }
-                    .buttonStyle(.bordered)
-                    .tint(didWin ? Color(red: 0.45, green: 0.3, blue: 0.1) : .white)
                 }
 
                 Spacer()

@@ -132,12 +132,16 @@ final class MatchViewModel {
     var coinReward: Int {
         guard mode != .passAndPlay, case .finished(let winner) = turnState else { return 0 }
         guard winner == localPlayer else { return 25 }
+        // The onboarding battle was a gift, not a fight — a fixed pocket of
+        // starter coins (enough for a couple of cheap power-ups, not the
+        // whole armory shelf) keeps the earn-them-back hook intact.
+        if isTutorial { return 150 }
         let base = 200 + 10 * (state.boards[localPlayer]?.survivingShipCellCount ?? 0)
         let multiplier = mode == .ai ? captain.rewardMultiplier : 1.0
         return Int((Double(base) * multiplier).rounded())
     }
 
-    private let isTutorial: Bool
+    let isTutorial: Bool
 
     init(config: MatchConfig) {
         consumesInventory = config.consumesInventory

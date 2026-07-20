@@ -96,8 +96,11 @@ private struct MatchContentView: View {
                 if let viewModel, !rewardApplied {
                     rewardApplied = true
                     var reward = viewModel.coinReward
-                    // First AI-battle win each day pays double.
+                    // First AI-battle win each day pays double — but the
+                    // onboarding battle doesn't burn it; save the 2x moment
+                    // for the player's first real victory.
                     if viewModel.mode == .ai, viewModel.didWin, reward > 0,
+                       !viewModel.isTutorial,
                        profileStore.claimFirstWinBonus() {
                         reward *= 2
                         firstWinBonusApplied = true
@@ -123,6 +126,9 @@ private struct MatchContentView: View {
                     message: viewModel.endMessage,
                     coinReward: finalReward,
                     firstWinBonus: firstWinBonusApplied,
+                    // Replaying the nearly-won onboarding battle would farm
+                    // free coins — one gift per captain.
+                    showRematch: !viewModel.isTutorial,
                     onRematch: {
                         showEndScreen = false
                         onRematch()
