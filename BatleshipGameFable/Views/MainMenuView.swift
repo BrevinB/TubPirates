@@ -50,14 +50,14 @@ struct MainMenuView: View {
                 Spacer(minLength: 40)
 
                 VStack(spacing: 4) {
-                    Text("Bathtub Battles")
+                    Text("Tub Pirates")
                         .font(.system(size: 40, weight: .heavy, design: .rounded))
                         .foregroundStyle(Color(red: 0.12, green: 0.3, blue: 0.52))
                         .shadow(color: .white.opacity(0.9), radius: 2)
                         .shadow(color: .white.opacity(0.7), radius: 8)
                         .minimumScaleFactor(0.7)
                         .lineLimit(1)
-                    Text("Dogbeard awaits...")
+                    Text("Captain Pugbeard awaits...")
                         .font(.headline.weight(.bold))
                         .foregroundStyle(Color(red: 0.2, green: 0.4, blue: 0.6))
                         .shadow(color: .white.opacity(0.8), radius: 3)

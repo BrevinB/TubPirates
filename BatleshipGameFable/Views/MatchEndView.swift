@@ -203,12 +203,12 @@ struct MatchEndView: View {
 
 #Preview("Win") {
     MatchEndView(didWin: true, title: "Victory!",
-                 message: "Dogbeard's fleet rests at the bottom of the tub.",
+                 message: "Captain Pugbeard's fleet rests at the bottom of the tub.",
                  coinReward: 280, onRematch: {}, onExit: {})
 }
 
 #Preview("Loss") {
     MatchEndView(didWin: false, title: "Sunk!",
-                 message: "Dogbeard cackles as your last ship goes under.",
+                 message: "Captain Pugbeard cackles as your last ship goes under.",
                  coinReward: 25, onRematch: {}, onExit: {})
 }

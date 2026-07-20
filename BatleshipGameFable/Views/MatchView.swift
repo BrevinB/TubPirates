@@ -227,7 +227,7 @@ private struct MatchContentView: View {
                     .frame(width: 16, height: 9)
                     .offset(x: 24, y: -8)
             }
-            .accessibilityLabel("Dogbeard says: \(line)")
+            .accessibilityLabel("\(viewModel?.captain.name ?? "Captain") says: \(line)")
     }
 
     private func leaveButton(_ viewModel: MatchViewModel) -> some View {

@@ -71,7 +71,7 @@ struct Captain: Identifiable, Equatable {
 extension Captain {
     static let dogbeard = Captain(
         id: "dogbeard",
-        name: "Dogbeard",
+        name: "Captain Pugbeard",
         portrait: "portrait_dogbeard",
         blurb: "The scruffy scourge of the bathtub. All bark, some bite.",
         sloppiness: 0.18,

@@ -29,7 +29,7 @@ struct WelcomeView: View {
                     welcomePage(
                         image: "portrait_dogbeard_gloat",
                         title: "Ahoy, Captain!",
-                        text: "Dogbeard the pirate pug has seized the bathtub — and he's daring YOU to take it back!"
+                        text: "Captain Pugbeard the pirate pug has seized the bathtub — and he's daring YOU to take it back!"
                     )
                     .tag(0)
 
