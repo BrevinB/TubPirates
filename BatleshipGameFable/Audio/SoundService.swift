@@ -59,6 +59,13 @@ final class SoundService {
     private var warmed = false
     private var musicRequested = false
 
+    /// All AVAudioPlayer control happens on this queue — play() can lazily
+    /// (re)activate the audio session, which blocks, so it must stay off the
+    /// main thread. High QoS keeps SFX latency imperceptible.
+    private nonisolated static let audioQueue = DispatchQueue(
+        label: "co.brevinb.bathtub.audio", qos: .userInteractive
+    )
+
     private init() {}
 
     /// Wraps non-Sendable AVAudioPlayers for the one-shot hop back to the
@@ -100,10 +107,13 @@ final class SoundService {
 
     func play(_ sound: GameSound) {
         guard enabled, let pool = pools[sound] else { return }
-        // First idle player, or steal the oldest voice for relentless volleys.
-        let player = pool.first { !$0.isPlaying } ?? pool.first
-        player?.currentTime = 0
-        player?.play()
+        let box = TransferBox(value: pool)
+        Self.audioQueue.async {
+            // First idle player, or steal a voice for relentless volleys.
+            let player = box.value.first { !$0.isPlaying } ?? box.value.first
+            player?.currentTime = 0
+            player?.play()
+        }
     }
 
     // MARK: - Music
@@ -159,11 +169,14 @@ final class SoundService {
     }
 
     func stopMusic() {
-        guard let musicPlayer, musicPlayer.isPlaying else { return }
-        musicPlayer.setVolume(0, fadeDuration: 0.6)
-        Task { [weak musicPlayer] in
-            try? await Task.sleep(for: .milliseconds(650))
-            musicPlayer?.pause()
+        guard let musicPlayer else { return }
+        let box = TransferBox(value: musicPlayer)
+        Self.audioQueue.async {
+            guard box.value.isPlaying else { return }
+            box.value.setVolume(0, fadeDuration: 0.6)
+            Self.audioQueue.asyncAfter(deadline: .now() + 0.65) {
+                box.value.pause()
+            }
         }
     }
 
