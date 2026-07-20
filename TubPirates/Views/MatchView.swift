@@ -140,6 +140,7 @@ private struct MatchContentView: View {
                     // Replaying the nearly-won onboarding battle would farm
                     // free coins — one gift per captain.
                     showRematch: !viewModel.isTutorial,
+                    onArmory: armoryOffer(viewModel),
                     onRematch: {
                         showEndScreen = false
                         onRematch()
@@ -150,6 +151,19 @@ private struct MatchContentView: View {
                     }
                 )
             }
+        }
+    }
+
+    /// After a real-economy AI defeat with a drained stash, the end screen
+    /// offers the Armory door — the moment the player best understands what
+    /// a special cannon is worth.
+    private func armoryOffer(_ viewModel: MatchViewModel) -> (() -> Void)? {
+        guard !viewModel.didWin, viewModel.mode == .ai, config.consumesInventory else { return nil }
+        let stash = ShotType.purchasable.reduce(0) { $0 + profileStore.inventory(of: $1) }
+        guard stash <= 1 else { return nil }
+        return {
+            showEndScreen = false
+            path = [.armory]
         }
     }
 

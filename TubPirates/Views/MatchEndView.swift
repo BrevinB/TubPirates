@@ -16,6 +16,9 @@ struct MatchEndView: View {
     let coinReward: Int
     var firstWinBonus: Bool = false
     var showRematch: Bool = true
+    /// When set (AI defeats with a drained stash), shows the gentle
+    /// restock-the-armory door above the buttons.
+    var onArmory: (() -> Void)? = nil
     let onRematch: () -> Void
     let onExit: () -> Void
 
@@ -106,6 +109,40 @@ struct MatchEndView: View {
                 }
 
                 Spacer()
+
+                if !didWin, let onArmory {
+                    Button(action: onArmory) {
+                        HStack(spacing: 12) {
+                            Image("icon_cannon")
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 44, height: 44)
+                                .clipShape(RoundedRectangle(cornerRadius: 9))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Restock the Armory")
+                                    .font(.system(size: 16, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.08))
+                                Text("Yer stash is empty — special cannons turn the tide, matey!")
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(Color(red: 0.45, green: 0.3, blue: 0.15))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(Color(red: 0.55, green: 0.38, blue: 0.2))
+                        }
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(red: 1, green: 0.96, blue: 0.85))
+                                .strokeBorder(Color.orange, lineWidth: 2)
+                                .shadow(color: .black.opacity(0.3), radius: 5, y: 3)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 28)
+                    .padding(.bottom, 10)
+                }
 
                 VStack(spacing: 14) {
                     if showRematch {
