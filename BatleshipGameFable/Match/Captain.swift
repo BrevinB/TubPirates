@@ -27,6 +27,10 @@ struct Captain: Identifiable, Equatable {
     let rewardMultiplier: Double
     /// Wins against this captain needed to unlock the next rung.
     let winsToAdvance: Int
+    /// Cosmetic fleet this captain's ships render with (revealed/sunk on the
+    /// enemy board). Higher rungs show off the premium sets — a live preview
+    /// of what the Shipyard sells.
+    var fleetID: String = "classic"
     let lines: [DialogEvent: [String]]
 
     static func == (lhs: Captain, rhs: Captain) -> Bool { lhs.id == rhs.id }
@@ -61,7 +65,7 @@ struct Captain: Identifiable, Equatable {
             id: id, name: name, portrait: portrait, blurb: blurb,
             sloppiness: sloppiness, specialUseChance: specialUseChance,
             rewardMultiplier: rewardMultiplier, winsToAdvance: winsToAdvance,
-            lines: lines
+            fleetID: fleetID, lines: lines
         )
     }
 }
@@ -187,6 +191,7 @@ extension Captain {
         specialUseChance: 0.26,
         rewardMultiplier: 1.75,
         winsToAdvance: 5,
+        fleetID: "seaMonster",
         lines: [
             .matchStart: [
                 "Eight arms, little squid. Ye can't watch 'em all.",
@@ -240,6 +245,7 @@ extension Captain {
         specialUseChance: 0.3,
         rewardMultiplier: 2.0,
         winsToAdvance: 3,
+        fleetID: "ducky",
         lines: [
             .matchStart: [
                 "Harrumph! State your business in MY waters, sailor!",

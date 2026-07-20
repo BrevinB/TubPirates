@@ -133,6 +133,7 @@ final class BattleScene: SKScene, BattleSceneRendering {
     func refreshBoards() {
         guard let viewModel else { return }
         ownBoard.fleetSkin = FleetSkin.withID(viewModel.playerFleetID)
+        enemyBoard.fleetSkin = FleetSkin.withID(viewModel.enemyFleetID)
         enemyBoard.update(enemy: viewModel.enemyView)
         ownBoard.update(own: viewModel.ownBoard)
     }

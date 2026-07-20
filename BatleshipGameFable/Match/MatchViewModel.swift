@@ -144,6 +144,10 @@ final class MatchViewModel {
     let isTutorial: Bool
     /// Equipped cosmetic fleet for the local player's own board (set by the view).
     var playerFleetID: String = "classic"
+    /// The rival's fleet skin: ladder captains show off premium sets.
+    var enemyFleetID: String {
+        mode == .ai ? captain.fleetID : "classic"
+    }
 
     init(config: MatchConfig) {
         consumesInventory = config.consumesInventory
