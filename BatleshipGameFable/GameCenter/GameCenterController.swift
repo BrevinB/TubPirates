@@ -121,9 +121,15 @@ final class GameCenterController: OpponentController {
     /// Called by GameCenterService when Game Center delivers updated match data.
     func handleTurnEvent(_ updatedMatch: GKTurnBasedMatch) {
         // Opponent quit or timed out → hand the win to the local player.
-        let opponentQuit = updatedMatch.participants.contains {
-            $0.player?.gamePlayerID != GKLocalPlayer.local.gamePlayerID
-                && ($0.matchOutcome == .quit || $0.matchOutcome == .timeout)
+        let localID: String = GKLocalPlayer.local.gamePlayerID
+        var opponentQuit = false
+        for participant in updatedMatch.participants {
+            let participantID: String? = participant.player?.gamePlayerID
+            if participantID == localID { continue }
+            let outcome: GKTurnBasedMatch.Outcome = participant.matchOutcome
+            if outcome == .quit || outcome == .timeExpired {
+                opponentQuit = true
+            }
         }
 
         let data = MatchDataCodec.decode(updatedMatch.matchData)
