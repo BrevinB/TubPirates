@@ -49,6 +49,14 @@ struct SettingsView: View {
             #if DEBUG
             Section {
                 Toggle("Unlock every cannon", isOn: $debugAllShots)
+                Button("Add 1,000 Doubloons") {
+                    profileStore.award(coins: 1000)
+                    SoundService.shared.play(.coin)
+                }
+                Button("Unlock All Cosmetics") {
+                    profileStore.debugUnlockAllCosmetics()
+                    SoundService.shared.play(.chest)
+                }
             } header: {
                 sectionHeader("Developer")
             } footer: {

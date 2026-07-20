@@ -80,6 +80,13 @@ final class ProfileStore {
         save()
     }
 
+    /// Debug: own every avatar and fleet skin at once.
+    func debugUnlockAllCosmetics() {
+        profile.ownedAvatars = Set(Avatar.all.map(\.id))
+        profile.ownedFleets = Set(FleetSkin.all.map(\.id))
+        save()
+    }
+
     /// Buys and equips in one step (like avatars).
     @discardableResult
     func buyFleet(_ fleet: FleetSkin) -> Bool {
