@@ -11,6 +11,16 @@ struct MatchView: View {
 
     var body: some View {
         MatchContentView(config: config, path: $path) {
+            // AI rematches go back through placement (pre-seeded with the
+            // previous layout) so the fleet can be repositioned. Other modes
+            // just rebuild in place.
+            if case .ai = config.mode {
+                var next = config
+                next.resume = false
+                next.tutorial = false
+                path = [.placement(next)]
+                return
+            }
             matchID = UUID()
         }
         .id(matchID)

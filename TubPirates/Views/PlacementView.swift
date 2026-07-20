@@ -53,10 +53,15 @@ struct PlacementView: View {
         ZStack {
             ScreenBackground(imageName: "placement_background")
                 .onAppear {
+                    guard board.ships.isEmpty else { return }
                     // Debug: pre-place a random fleet for screenshots.
-                    if CommandLine.arguments.contains("-randomize"), board.ships.isEmpty {
+                    if CommandLine.arguments.contains("-randomize") {
                         var rng = SystemRandomNumberGenerator()
                         board = Board.randomlyPlaced(using: &rng)
+                    } else if let previous = config.playerBoard {
+                        // Rematch: start from last game's layout — one tap to
+                        // re-battle, or drag to reposition.
+                        board = previous
                     }
                 }
 
