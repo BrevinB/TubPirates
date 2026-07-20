@@ -87,9 +87,14 @@ struct ShotPanelView: View {
             if spent {
                 // Empty slot: offer a doubloon refill when eligible — the
                 // armory ladder gate applies in battle too.
-                if viewModel.canOfferPurchase(of: shot), profileStore.isShotInStock(shot) {
+                if viewModel.canOfferPurchase(of: shot) {
                     SoundService.shared.play(.tap)
-                    pendingPurchase = shot
+                    if profileStore.isShotInStock(shot) {
+                        pendingPurchase = shot
+                    } else {
+                        // Locked behind the captain ladder: explain why.
+                        tooltipShot = tooltipShot == shot ? nil : shot
+                    }
                 }
                 return
             }
@@ -115,6 +120,14 @@ struct ShotPanelView: View {
                 )
                 .saturation(spent ? 0.1 : 1)
                 .opacity(spent ? 0.5 : 1)
+                .overlay {
+                    if spent, viewModel.canOfferPurchase(of: shot), !profileStore.isShotInStock(shot) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(.white)
+                            .shadow(color: .black.opacity(0.7), radius: 2)
+                    }
+                }
                 .overlay(alignment: .topTrailing) {
                     if spent, viewModel.canOfferPurchase(of: shot), profileStore.isShotInStock(shot) {
                         // Buyable refill: coin badge instead of the gray zero.
@@ -167,6 +180,13 @@ struct ShotPanelView: View {
             Text(shot.spec.blurb)
                 .font(.system(size: 12, weight: .medium, design: .rounded))
                 .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.05))
+            if !profileStore.isShotInStock(shot),
+               let requirement = profileStore.armoryRequirement(for: shot) {
+                Label("Defeat \(requirement.name) ×\(requirement.winsToAdvance) to unlock",
+                      systemImage: "lock.fill")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color(red: 0.7, green: 0.4, blue: 0.1))
+            }
         }
         .padding(10)
         .frame(maxWidth: 190)
