@@ -118,19 +118,44 @@ final class SoundService {
         beginMusic()
     }
 
+    private var musicStarting = false
+
     private func beginMusic() {
-        guard musicEnabled,
-              musicPlayer?.isPlaying != true,
-              !AVAudioSession.sharedInstance().isOtherAudioPlaying
-        else { return }
-        if musicPlayer == nil,
-           let url = Bundle.main.url(forResource: "music_main", withExtension: "m4a") {
-            musicPlayer = try? AVAudioPlayer(contentsOf: url)
-            musicPlayer?.numberOfLoops = -1
-            musicPlayer?.volume = 0 // fades in below
+        guard musicEnabled, !musicStarting, musicPlayer?.isPlaying != true else { return }
+        musicStarting = true
+        let existing = musicPlayer.map { TransferBox(value: $0) }
+        let url = Bundle.main.url(forResource: "music_main", withExtension: "m4a")
+        // isOtherAudioPlaying and the first play() both talk to the media
+        // server and can block — keep them off the main thread.
+        Task.detached(priority: .utility) {
+            defer {
+                Task { @MainActor in SoundService.shared.musicStarting = false }
+            }
+            guard !AVAudioSession.sharedInstance().isOtherAudioPlaying else { return }
+            let player: AVAudioPlayer?
+            if let existing {
+                player = existing.value
+            } else if let url {
+                player = try? AVAudioPlayer(contentsOf: url)
+                player?.numberOfLoops = -1
+                player?.volume = 0 // fades in below
+            } else {
+                player = nil
+            }
+            guard let player else { return }
+            player.play()
+            player.setVolume(0.32, fadeDuration: 1.5)
+            let box = TransferBox(value: player)
+            await MainActor.run {
+                let service = SoundService.shared
+                if service.musicEnabled {
+                    service.musicPlayer = box.value
+                } else {
+                    // Toggled off while we were spinning up.
+                    box.value.stop()
+                }
+            }
         }
-        musicPlayer?.play()
-        musicPlayer?.setVolume(0.32, fadeDuration: 1.5)
     }
 
     func stopMusic() {
