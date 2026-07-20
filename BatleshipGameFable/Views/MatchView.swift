@@ -312,6 +312,7 @@ private struct MatchContentView: View {
         newViewModel.onLocalSpecialFired = { shot in
             profileStore.consumeUse(of: shot)
         }
+        newViewModel.playerFleetID = profileStore.fleet.id
         let newScene = BattleScene()
         newScene.scaleMode = .resizeFill
         newScene.viewModel = newViewModel

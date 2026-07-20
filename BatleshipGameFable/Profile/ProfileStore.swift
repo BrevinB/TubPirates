@@ -59,6 +59,38 @@ final class ProfileStore {
 
     // MARK: - Captain ladder
 
+    // MARK: - Fleet skins
+
+    var fleet: FleetSkin { FleetSkin.withID(profile.fleetID) }
+
+    func owns(_ fleet: FleetSkin) -> Bool {
+        profile.ownedFleets.contains(fleet.id)
+    }
+
+    func setFleet(_ fleet: FleetSkin) {
+        guard owns(fleet) else { return }
+        profile.fleetID = fleet.id
+        save()
+    }
+
+    /// Debug launch arg: grant + equip without cost.
+    func debugGrantFleet(_ fleet: FleetSkin) {
+        profile.ownedFleets.insert(fleet.id)
+        profile.fleetID = fleet.id
+        save()
+    }
+
+    /// Buys and equips in one step (like avatars).
+    @discardableResult
+    func buyFleet(_ fleet: FleetSkin) -> Bool {
+        guard !owns(fleet), profile.coins >= fleet.price else { return false }
+        profile.coins -= fleet.price
+        profile.ownedFleets.insert(fleet.id)
+        profile.fleetID = fleet.id
+        save()
+        return true
+    }
+
     /// Ladder-gated armory stock: the big booms arrive as captains fall,
     /// so beating a rival also unlocks new toys to buy.
     func armoryRequirement(for shot: ShotType) -> Captain? {

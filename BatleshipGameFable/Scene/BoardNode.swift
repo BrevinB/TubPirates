@@ -101,10 +101,9 @@ final class BoardNode: SKNode {
 
     // MARK: - Ship sprites
 
-    private static let textureNames: [ShipKind: String] = [
-        .galleon: "ship_5", .frigate: "ship_4", .tugboat: "ship_3a",
-        .duckSub: "ship_3b", .dinghy: "ship_2",
-    ]
+    /// Cosmetic fleet skin for the ships this board renders (own board gets
+    /// the player's equipped skin; enemy boards stay classic).
+    var fleetSkin: FleetSkin = .classic
 
     /// Reconciles the ship sprite layer. `revealed` ships render at `revealedAlpha`
     /// (ghostly for enemy intel, solid for the player's own fleet); sunk ships render dark.
@@ -134,7 +133,7 @@ final class BoardNode: SKNode {
     }
 
     private func makeShipSprite(for ship: Ship) -> SKSpriteNode {
-        let texture = SKTexture(imageNamed: Self.textureNames[ship.kind] ?? "ship_2")
+        let texture = SKTexture(imageNamed: fleetSkin.textureName(for: ship.kind))
         let sprite = SKSpriteNode(texture: texture)
 
         // Span the full footprint so ships honestly read as N cells long;

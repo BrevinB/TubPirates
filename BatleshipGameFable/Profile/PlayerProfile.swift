@@ -10,6 +10,9 @@ struct PlayerProfile: Codable, Equatable {
     var wins: Int = 0
     var losses: Int = 0
     var avatarID: String = Avatar.defaultID
+    /// Equipped cosmetic fleet skin and the set of purchased ones.
+    var fleetID: String = "classic"
+    var ownedFleets: Set<String> = ["classic"]
     /// Purchased avatar IDs (free avatars aren't tracked — they're always owned).
     var ownedAvatars: Set<String> = []
     /// Wins against each rival captain, for ladder progression.
@@ -40,6 +43,8 @@ struct PlayerProfile: Codable, Equatable {
         losses = try container.decodeIfPresent(Int.self, forKey: .losses) ?? 0
         avatarID = try container.decodeIfPresent(String.self, forKey: .avatarID) ?? Avatar.defaultID
         ownedAvatars = try container.decodeIfPresent(Set<String>.self, forKey: .ownedAvatars) ?? []
+        fleetID = try container.decodeIfPresent(String.self, forKey: .fleetID) ?? "classic"
+        ownedFleets = try container.decodeIfPresent(Set<String>.self, forKey: .ownedFleets) ?? ["classic"]
         captainWins = try container.decodeIfPresent([String: Int].self, forKey: .captainWins)
             ?? [:]
         lastDailyChestClaim = try container.decodeIfPresent(Date.self, forKey: .lastDailyChestClaim)

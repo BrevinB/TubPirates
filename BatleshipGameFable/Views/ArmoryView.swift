@@ -5,6 +5,7 @@ import BathtubEngine
 /// Each purchase adds one use to the stash; firing one in battle spends it.
 struct ArmoryView: View {
     @Environment(ProfileStore.self) private var profileStore
+    @State private var pendingFleet: FleetSkin?
 
     private static let iconNames: [ShotType: String] = [
         .parrotScout: "icon_parrot", .bigShot: "icon_bigshot",
@@ -27,8 +28,48 @@ struct ArmoryView: View {
                     ForEach(ShotType.purchasable) { shot in
                         shotCard(shot)
                     }
+
+                    Text("⚓️ The Shipyard")
+                        .font(.system(size: 22, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color(red: 1, green: 0.94, blue: 0.8))
+                        .shadow(color: .black.opacity(0.6), radius: 2, y: 1)
+                        .padding(.top, 14)
+                    Text("New looks for yer whole fleet — pure style, same firepower.")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color(red: 1, green: 0.94, blue: 0.8).opacity(0.9))
+                        .shadow(color: .black.opacity(0.6), radius: 2, y: 1)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+
+                    ForEach(FleetSkin.all) { fleet in
+                        fleetCard(fleet)
+                    }
                 }
                 .padding()
+            }
+        }
+        .confirmationDialog(
+            pendingFleet.map { "Buy the \($0.name) for \($0.price) doubloons?" } ?? "",
+            isPresented: Binding(
+                get: { pendingFleet != nil },
+                set: { if !$0 { pendingFleet = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let fleet = pendingFleet {
+                if profileStore.coins >= fleet.price {
+                    Button("Buy & Equip") {
+                        if profileStore.buyFleet(fleet) {
+                            SoundService.shared.play(.chest)
+                        }
+                        pendingFleet = nil
+                    }
+                }
+                Button("Cancel", role: .cancel) { pendingFleet = nil }
+            }
+        } message: {
+            if let fleet = pendingFleet, profileStore.coins < fleet.price {
+                Text("Ye need \(fleet.price - profileStore.coins) more doubloons. Win battles to earn them!")
             }
         }
         .navigationTitle("Armory")
@@ -38,6 +79,81 @@ struct ArmoryView: View {
                 DoubloonLabel(amount: profileStore.coins, fontSize: 16)
             }
         }
+    }
+
+    /// A Shipyard card: fleet preview strip + name + buy/equip state.
+    private func fleetCard(_ fleet: FleetSkin) -> some View {
+        let owned = profileStore.owns(fleet)
+        let equipped = profileStore.fleet == fleet
+        let affordable = profileStore.coins >= fleet.price
+
+        return Button {
+            if equipped { return }
+            if owned {
+                SoundService.shared.play(.pop)
+                profileStore.setFleet(fleet)
+            } else {
+                pendingFleet = fleet
+            }
+        } label: {
+            VStack(spacing: 8) {
+                HStack(spacing: 4) {
+                    Text(fleet.name)
+                        .font(.system(size: 17, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.08))
+                    Spacer()
+                    if equipped {
+                        Label("Equipped", systemImage: "checkmark.circle.fill")
+                            .font(.system(size: 12, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.green, in: Capsule())
+                    } else if owned {
+                        Text("Tap to equip")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(Color(red: 0.55, green: 0.38, blue: 0.2))
+                    } else {
+                        HStack(spacing: 4) {
+                            DoubloonLabel(amount: fleet.price, fontSize: 13)
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
+                        .background(affordable ? Color.orange : .gray, in: Capsule())
+                    }
+                }
+
+                // The five toys, largest to smallest, bobbing on one shelf.
+                HStack(alignment: .bottom, spacing: 6) {
+                    ForEach(fleet.previewTextures, id: \.self) { texture in
+                        Image(texture)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxHeight: 34)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .saturation(owned ? 1 : 0.7)
+
+                Text(fleet.blurb)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color(red: 0.45, green: 0.3, blue: 0.15))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(red: 1, green: 0.96, blue: 0.85))
+                    .strokeBorder(
+                        equipped ? Color.green : Color(red: 0.6, green: 0.42, blue: 0.22),
+                        lineWidth: 2.5
+                    )
+                    .shadow(color: .black.opacity(0.4), radius: 5, y: 3)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(owned ? fleet.name : "\(fleet.name), \(fleet.price) doubloons")
     }
 
     private func shotCard(_ shot: ShotType) -> some View {

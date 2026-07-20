@@ -142,6 +142,8 @@ final class MatchViewModel {
     }
 
     let isTutorial: Bool
+    /// Equipped cosmetic fleet for the local player's own board (set by the view).
+    var playerFleetID: String = "classic"
 
     init(config: MatchConfig) {
         consumesInventory = config.consumesInventory

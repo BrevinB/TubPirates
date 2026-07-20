@@ -24,10 +24,12 @@ struct PlacementView: View {
     /// Last previewed origin, for haptic ticks as the ghost snaps cell to cell.
     @State private var lastTickedOrigin: Coordinate?
 
-    private static let shipImages: [ShipKind: String] = [
-        .galleon: "ship_5", .frigate: "ship_4", .tugboat: "ship_3a",
-        .duckSub: "ship_3b", .dinghy: "ship_2",
-    ]
+    @Environment(ProfileStore.self) private var profileStore
+
+    /// The equipped cosmetic fleet's sprite for a ship kind.
+    private func shipImage(_ kind: ShipKind) -> String {
+        profileStore.fleet.textureName(for: kind)
+    }
 
     /// How far the ghost floats above the finger, in cells — keeps the ship
     /// visible instead of hidden under your thumb.
@@ -135,7 +137,7 @@ struct PlacementView: View {
                 // Placed ships: framed horizontally at their true footprint,
                 // then rotated — so vertical ships lie along their cells.
                 ForEach(board.ships) { ship in
-                    Image(Self.shipImages[ship.kind] ?? "ship_2")
+                    Image(shipImage(ship.kind))
                         .resizable()
                         .frame(
                             width: cellSize * CGFloat(ship.kind.length) * 0.98,
@@ -150,7 +152,7 @@ struct PlacementView: View {
 
                 // The ghost ship floating above the finger
                 if let kind = draggingKind {
-                    Image(Self.shipImages[kind] ?? "ship_2")
+                    Image(shipImage(kind))
                         .resizable()
                         .frame(
                             width: cellSize * CGFloat(kind.length),
@@ -354,7 +356,7 @@ struct PlacementView: View {
     }
 
     private func trayShip(_ kind: ShipKind) -> some View {
-        Image(Self.shipImages[kind] ?? "ship_2")
+        Image(shipImage(kind))
             .resizable()
             .scaledToFit()
             .frame(maxWidth: CGFloat(kind.length) * 19, maxHeight: 30)

@@ -68,6 +68,10 @@ struct RootView: View {
             if let index = args.firstIndex(of: "-avatar"), index + 1 < args.count {
                 profileStore.setAvatar(args[index + 1])
             }
+            // Debug: -fleet <id> grants and equips a fleet skin for testing.
+            if let index = args.firstIndex(of: "-fleet"), index + 1 < args.count {
+                profileStore.debugGrantFleet(FleetSkin.withID(args[index + 1]))
+            }
             if args.contains("-autoBattle") {
                 let mode: MatchConfig.Mode = args.contains("-pnp") ? .passAndPlay : .ai
                 // -consume: use the real stash + consumable accounting (for testing).
