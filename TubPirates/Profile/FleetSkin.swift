@@ -42,7 +42,7 @@ struct FleetSkin: Identifiable, Equatable {
         id: "ducky",
         name: "Ducky Squadron",
         blurb: "An armada of rubber ducks, from walnut-shell duckling to armored flagship.",
-        price: 1200,
+        price: 1500,
         assetInfix: "duck"
     )
 
@@ -50,7 +50,7 @@ struct FleetSkin: Identifiable, Equatable {
         id: "seaMonster",
         name: "Sea Monster Crew",
         blurb: "Crab, seahorse, turtle, narwhal, kraken — the deep end's finest.",
-        price: 2000,
+        price: 2500,
         assetInfix: "sea"
     )
 

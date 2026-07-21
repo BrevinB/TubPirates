@@ -22,8 +22,8 @@ struct Avatar: Identifiable, Equatable {
         Avatar(id: "avatar_shark", name: "Scrubs the Shark", price: 850),
         Avatar(id: "avatar_narwhal", name: "Lord Pointington", price: 1000),
         Avatar(id: "avatar_duck_robo", name: "Quackbot 3000", price: 1250),
-        Avatar(id: "avatar_duck_gold", name: "The Golden Quack", price: 1500),
-        Avatar(id: "avatar_duck_diamond", name: "The Diamond Quack", price: 2500),
+        Avatar(id: "avatar_duck_gold", name: "The Golden Quack", price: 2000),
+        Avatar(id: "avatar_duck_diamond", name: "The Diamond Quack", price: 4000),
     ]
 
     static let defaultID = "portrait_player"
