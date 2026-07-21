@@ -7,6 +7,8 @@ struct FleetSkin: Identifiable, Equatable {
     let name: String
     let blurb: String
     let price: Int
+    /// Trophy fleets: how to earn it. Set = can never be bought.
+    var earnedBy: String? = nil
     /// Asset-name infix ("duck" → ship_duck_5); nil uses the classic ship_N set.
     private let assetInfix: String?
 
@@ -54,7 +56,16 @@ struct FleetSkin: Identifiable, Equatable {
         assetInfix: "sea"
     )
 
-    static let all: [FleetSkin] = [.classic, .ducky, .seaMonster]
+    static let gilded = FleetSkin(
+        id: "gilded",
+        name: "The Gilded Armada",
+        blurb: "Five toys of solid gold, forged for the ruler of the tub. Cannot be bought.",
+        price: 0,
+        earnedBy: "Become Tub Champion",
+        assetInfix: "gild"
+    )
+
+    static let all: [FleetSkin] = [.classic, .ducky, .seaMonster, .gilded]
 
     static func withID(_ id: String) -> FleetSkin {
         all.first { $0.id == id } ?? .classic

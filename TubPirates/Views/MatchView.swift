@@ -124,6 +124,8 @@ private struct MatchContentView: View {
                     let captainsBefore = Captain.roster.filter { profileStore.isUnlocked($0) }
                     let stockBefore = ShotType.purchasable.filter { profileStore.isShotInStock($0) }
                     let championBefore = profileStore.isLadderChampion
+                    let fleetsBefore = profileStore.profile.ownedFleets
+                    let avatarsBefore = profileStore.profile.ownedAvatars
                     profileStore.recordResult(
                         won: viewModel.didWin,
                         againstCaptainID: viewModel.mode == .ai ? viewModel.captain.id : nil
@@ -143,6 +145,22 @@ private struct MatchContentView: View {
                             icon: ShotPanelView.iconName(for: shot),
                             kicker: "NEW IN THE ARMORY",
                             title: shot.spec.displayName
+                        ))
+                    }
+                    for fleet in FleetSkin.all
+                    where fleet.earnedBy != nil && profileStore.owns(fleet) && !fleetsBefore.contains(fleet.id) {
+                        banners.append(UnlockBanner(
+                            icon: fleet.previewTextures.first ?? "ship_5",
+                            kicker: "TROPHY EARNED",
+                            title: fleet.name
+                        ))
+                    }
+                    for avatar in Avatar.all
+                    where avatar.earnedBy != nil && profileStore.owns(avatar) && !avatarsBefore.contains(avatar.id) {
+                        banners.append(UnlockBanner(
+                            icon: avatar.id,
+                            kicker: "TROPHY EARNED",
+                            title: avatar.name
                         ))
                     }
                     if !championBefore, profileStore.isLadderChampion {

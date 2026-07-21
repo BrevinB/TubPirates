@@ -138,7 +138,7 @@ struct ArmoryView: View {
             if owned {
                 SoundService.shared.play(.pop)
                 profileStore.setFleet(fleet)
-            } else {
+            } else if fleet.earnedBy == nil {
                 pendingFleet = fleet
             }
         } label: {
@@ -159,6 +159,13 @@ struct ArmoryView: View {
                         Text("Tap to equip")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundStyle(Color(red: 0.55, green: 0.38, blue: 0.2))
+                    } else if let earnedBy = fleet.earnedBy {
+                        Label(earnedBy, systemImage: "trophy.fill")
+                            .font(.system(size: 11, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(Color(red: 0.75, green: 0.55, blue: 0.1), in: Capsule())
                     } else {
                         HStack(spacing: 4) {
                             DoubloonLabel(amount: fleet.price, fontSize: 13)

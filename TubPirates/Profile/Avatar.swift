@@ -3,8 +3,10 @@
 struct Avatar: Identifiable, Equatable {
     let id: String       // asset name
     let name: String
-    /// Doubloon price; 0 = free (always owned).
+    /// Doubloon price; 0 = free (always owned) unless `earnedBy` is set.
     var price: Int = 0
+    /// Trophy cosmetics: how to earn it. Set = can never be bought.
+    var earnedBy: String? = nil
 
     static let all: [Avatar] = [
         Avatar(id: "portrait_player", name: "Sailor Pup"),
@@ -24,6 +26,7 @@ struct Avatar: Identifiable, Equatable {
         Avatar(id: "avatar_duck_robo", name: "Quackbot 3000", price: 1250),
         Avatar(id: "avatar_duck_gold", name: "The Golden Quack", price: 2000),
         Avatar(id: "avatar_duck_diamond", name: "The Diamond Quack", price: 4000),
+        Avatar(id: "avatar_duck_king", name: "The Tub King", earnedBy: "Win 25 battles"),
     ]
 
     static let defaultID = "portrait_player"

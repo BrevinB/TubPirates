@@ -17,6 +17,8 @@ final class ProfileStore {
         } else {
             profile = PlayerProfile()
         }
+        // Trophies added in updates reach veterans who already qualify.
+        syncEarnedCosmetics()
     }
 
     var coins: Int { profile.coins }
@@ -43,12 +45,16 @@ final class ProfileStore {
     // MARK: - Avatars
 
     func owns(_ avatar: Avatar) -> Bool {
-        avatar.price == 0 || profile.ownedAvatars.contains(avatar.id)
+        if profile.ownedAvatars.contains(avatar.id) { return true }
+        // Free starters — but trophies must be earned, never assumed.
+        return avatar.price == 0 && avatar.earnedBy == nil
     }
 
-    /// Buys a premium avatar. Returns false when unaffordable or already owned.
+    /// Buys a premium avatar. Returns false when unaffordable, already owned,
+    /// or a trophy (earned-only, no price can touch it).
     @discardableResult
     func buyAvatar(_ avatar: Avatar) -> Bool {
+        guard avatar.earnedBy == nil else { return false }
         guard !owns(avatar), profile.coins >= avatar.price else { return false }
         profile.coins -= avatar.price
         profile.ownedAvatars.insert(avatar.id)
@@ -88,6 +94,7 @@ final class ProfileStore {
             )
         }
         save()
+        syncEarnedCosmetics()
     }
 
     /// Debug: own every avatar and fleet skin at once.
@@ -97,9 +104,25 @@ final class ProfileStore {
         save()
     }
 
-    /// Buys and equips in one step (like avatars).
+    /// Grants any trophy cosmetics whose criteria are now met. Idempotent;
+    /// called after results are recorded and at load.
+    func syncEarnedCosmetics() {
+        var changed = false
+        if isLadderChampion, !profile.ownedFleets.contains(FleetSkin.gilded.id) {
+            profile.ownedFleets.insert(FleetSkin.gilded.id)
+            changed = true
+        }
+        if profile.wins >= 25, !profile.ownedAvatars.contains("avatar_duck_king") {
+            profile.ownedAvatars.insert("avatar_duck_king")
+            changed = true
+        }
+        if changed { save() }
+    }
+
+    /// Buys and equips in one step (like avatars). Trophy fleets refuse money.
     @discardableResult
     func buyFleet(_ fleet: FleetSkin) -> Bool {
+        guard fleet.earnedBy == nil else { return false }
         guard !owns(fleet), profile.coins >= fleet.price else { return false }
         profile.coins -= fleet.price
         profile.ownedFleets.insert(fleet.id)
@@ -213,6 +236,7 @@ final class ProfileStore {
             profile.losses += 1
         }
         save()
+        syncEarnedCosmetics()
     }
 
     /// Buys one use of a shot. Returns false when it can't be afforded.

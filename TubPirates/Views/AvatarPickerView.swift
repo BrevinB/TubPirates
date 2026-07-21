@@ -5,6 +5,7 @@ struct AvatarPickerView: View {
     @Environment(ProfileStore.self) private var profileStore
     @Environment(\.dismiss) private var dismiss
     @State private var pendingPurchase: Avatar?
+    @State private var trophyMessage: String?
 
     private let columns = [GridItem(.adaptive(minimum: 100), spacing: 16)]
 
@@ -47,6 +48,15 @@ struct AvatarPickerView: View {
                     Button("Done") { dismiss() }
                 }
             }
+            .alert(
+                trophyMessage ?? "",
+                isPresented: Binding(
+                    get: { trophyMessage != nil },
+                    set: { if !$0 { trophyMessage = nil } }
+                )
+            ) {
+                Button("Aye!", role: .cancel) { trophyMessage = nil }
+            }
             .confirmationDialog(
                 pendingPurchase.map { "Buy \($0.name) for \($0.price) doubloons?" } ?? "",
                 isPresented: Binding(
@@ -83,6 +93,8 @@ struct AvatarPickerView: View {
             if owned {
                 SoundService.shared.play(.pop)
                 profileStore.setAvatar(avatar.id)
+            } else if let earnedBy = avatar.earnedBy {
+                trophyMessage = "\(avatar.name) can't be bought — \(earnedBy.lowercased()) to earn it!"
             } else {
                 pendingPurchase = avatar
             }
@@ -109,7 +121,15 @@ struct AvatarPickerView: View {
                         }
                     }
                     .overlay(alignment: .top) {
-                        if !owned {
+                        if !owned, avatar.earnedBy != nil {
+                            Label("Trophy", systemImage: "trophy.fill")
+                                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(Color(red: 0.75, green: 0.55, blue: 0.1), in: Capsule())
+                                .offset(y: -8)
+                        } else if !owned {
                             HStack(spacing: 3) {
                                 Image("coin_doubloon")
                                     .resizable()
