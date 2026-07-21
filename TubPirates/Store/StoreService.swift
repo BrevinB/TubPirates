@@ -25,7 +25,7 @@ final class StoreService {
     /// RevenueCat public Apple API key (starts with `appl_`). Leave empty to
     /// disable the store entirely (development builds).
     /// TODO: paste from RevenueCat dashboard → Project → API keys.
-    static let apiKey = ""
+    static let apiKey = "appl_CehpLBBborFwXJaGdLRcqufLfqP"
 
     /// Product ID → doubloons granted. Must match the consumable IAPs in
     /// App Store Connect and the packages attached in RevenueCat.

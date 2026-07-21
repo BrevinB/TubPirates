@@ -133,11 +133,9 @@ struct MainMenuView: View {
         }
         .sheet(isPresented: $showAvatarPicker) {
             AvatarPickerView()
-                .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showDoubloonShop) {
             DoubloonShopView()
-                .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showMatchmaker) {
             MatchmakerSheet(
