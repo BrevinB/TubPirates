@@ -58,6 +58,7 @@ struct RootView: View {
         .onAppear {
             SoundService.shared.warmUp()
             SoundService.shared.startMusic()
+            StoreService.shared.configureIfPossible()
             gameCenter.authenticate()
             let args = CommandLine.arguments
             // -welcome forces the story for testing; otherwise first launch only.

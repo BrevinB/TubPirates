@@ -10,6 +10,7 @@ struct MainMenuView: View {
     @State private var showAvatarPicker = false
     @State private var hasSavedMatch = MatchSaveStore.hasSave
     @State private var claimedChestAmount: Int?
+    @State private var showDoubloonShop = false
 
     private var debugAllShots: Bool {
         UserDefaults.standard.bool(forKey: "debugAllShots")
@@ -126,9 +127,16 @@ struct MainMenuView: View {
             if CommandLine.arguments.contains("-showAvatars") {
                 showAvatarPicker = true
             }
+            if CommandLine.arguments.contains("-showShop") {
+                showDoubloonShop = true
+            }
         }
         .sheet(isPresented: $showAvatarPicker) {
             AvatarPickerView()
+                .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showDoubloonShop) {
+            DoubloonShopView()
                 .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showMatchmaker) {
@@ -162,11 +170,23 @@ struct MainMenuView: View {
     }
 
     private var coinChip: some View {
-        DoubloonLabel(amount: profileStore.coins)
+        Button {
+            SoundService.shared.play(.tap)
+            showDoubloonShop = true
+        } label: {
+            HStack(spacing: 5) {
+                DoubloonLabel(amount: profileStore.coins)
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.yellow)
+            }
             .foregroundStyle(.white)
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
             .background(.black.opacity(0.3), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Doubloons: \(profileStore.coins). Get more.")
     }
 
     /// Once-a-day free treasure. Shows a claim card when available,
