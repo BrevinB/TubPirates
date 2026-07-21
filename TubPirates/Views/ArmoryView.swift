@@ -25,6 +25,7 @@ struct ArmoryView: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
 
+                    cannonCard
                     ForEach(ShotType.purchasable) { shot in
                         shotCard(shot)
                     }
@@ -79,6 +80,51 @@ struct ArmoryView: View {
                 DoubloonLabel(amount: profileStore.coins, fontSize: 16)
             }
         }
+    }
+
+    /// The trusty basic cannon — not for sale, never runs out. Shown so the
+    /// arsenal list reads complete and new captains know what they always have.
+    private var cannonCard: some View {
+        HStack(spacing: 14) {
+            Image("icon_cannon")
+                .resizable()
+                .scaledToFill()
+                .frame(width: 64, height: 64)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(alignment: .topTrailing) {
+                    Image(systemName: "infinity")
+                        .font(.system(size: 12, weight: .heavy))
+                        .foregroundStyle(.white)
+                        .padding(5)
+                        .background(Color.blue, in: Circle())
+                        .offset(x: 8, y: -8)
+                }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(ShotType.cannon.spec.displayName)
+                    .font(.system(size: 17, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.08))
+                Text(ShotType.cannon.spec.blurb)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color(red: 0.45, green: 0.3, blue: 0.15))
+            }
+
+            Spacer()
+
+            Label("Always armed", systemImage: "infinity")
+                .font(.system(size: 12, weight: .heavy, design: .rounded))
+                .foregroundStyle(Color(red: 0.35, green: 0.45, blue: 0.25))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color(red: 0.78, green: 0.88, blue: 0.7), in: Capsule())
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(red: 1, green: 0.96, blue: 0.85))
+                .strokeBorder(Color(red: 0.6, green: 0.42, blue: 0.22), lineWidth: 2.5)
+                .shadow(color: .black.opacity(0.4), radius: 5, y: 3)
+        )
     }
 
     /// A Shipyard card: fleet preview strip + name + buy/equip state.
