@@ -75,6 +75,10 @@ struct RootView: View {
             if let index = args.firstIndex(of: "-fleet"), index + 1 < args.count {
                 profileStore.debugGrantFleet(FleetSkin.withID(args[index + 1]))
             }
+            // Debug: -champion clears the whole ladder.
+            if args.contains("-champion") {
+                profileStore.debugConquerLadder()
+            }
             if args.contains("-autoBattle") {
                 let mode: MatchConfig.Mode = args.contains("-pnp") ? .passAndPlay : .ai
                 // -consume: use the real stash + consumable accounting (for testing).

@@ -28,7 +28,9 @@ struct MainMenuView: View {
             // The tub: your current rival peeks over the far rim — the menu
             // itself is a progression trophy that changes as you climb.
             GeometryReader { geo in
-                Image(profileStore.currentRival.menuBackground)
+                Image(profileStore.isLadderChampion
+                      ? "menu_champion"
+                      : profileStore.currentRival.menuBackground)
                     .resizable()
                     .scaledToFill()
                     .frame(width: geo.size.width, height: geo.size.height)
@@ -58,7 +60,9 @@ struct MainMenuView: View {
                         .shadow(color: .white.opacity(0.7), radius: 8)
                         .minimumScaleFactor(0.7)
                         .lineLimit(1)
-                    Text("\(profileStore.currentRival.name) awaits...")
+                    Text(profileStore.isLadderChampion
+                         ? "The tub is yours, Captain!"
+                         : "\(profileStore.currentRival.name) awaits...")
                         .font(.headline.weight(.bold))
                         .foregroundStyle(Color(red: 0.2, green: 0.4, blue: 0.6))
                         .shadow(color: .white.opacity(0.8), radius: 3)

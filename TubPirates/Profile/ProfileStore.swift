@@ -80,6 +80,16 @@ final class ProfileStore {
         save()
     }
 
+    /// Debug: clear every ladder rung (champion state).
+    func debugConquerLadder() {
+        for captain in Captain.roster {
+            profile.captainWins[captain.id] = max(
+                profile.captainWins[captain.id] ?? 0, captain.winsToAdvance
+            )
+        }
+        save()
+    }
+
     /// Debug: own every avatar and fleet skin at once.
     func debugUnlockAllCosmetics() {
         profile.ownedAvatars = Set(Avatar.all.map(\.id))
@@ -116,6 +126,11 @@ final class ProfileStore {
     /// The furthest rival the player has unlocked — the face of the menu.
     var currentRival: Captain {
         Captain.roster.last { isUnlocked($0) } ?? .dogbeard
+    }
+
+    /// Every rung of the ladder cleared — the tub is conquered.
+    var isLadderChampion: Bool {
+        Captain.roster.allSatisfy { wins(against: $0) >= $0.winsToAdvance }
     }
 
     func wins(against captain: Captain) -> Int {

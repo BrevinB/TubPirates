@@ -123,6 +123,7 @@ private struct MatchContentView: View {
                     // crossings can be announced on the victory screen.
                     let captainsBefore = Captain.roster.filter { profileStore.isUnlocked($0) }
                     let stockBefore = ShotType.purchasable.filter { profileStore.isShotInStock($0) }
+                    let championBefore = profileStore.isLadderChampion
                     profileStore.recordResult(
                         won: viewModel.didWin,
                         againstCaptainID: viewModel.mode == .ai ? viewModel.captain.id : nil
@@ -142,6 +143,14 @@ private struct MatchContentView: View {
                             icon: ShotPanelView.iconName(for: shot),
                             kicker: "NEW IN THE ARMORY",
                             title: shot.spec.displayName
+                        ))
+                    }
+                    if !championBefore, profileStore.isLadderChampion {
+                        // The final Bubbles win: every rung cleared.
+                        banners.append(UnlockBanner(
+                            icon: "treasure_chest",
+                            kicker: "LADDER CONQUERED",
+                            title: "The tub is yours, Captain!"
                         ))
                     }
                     unlockBanners = banners
