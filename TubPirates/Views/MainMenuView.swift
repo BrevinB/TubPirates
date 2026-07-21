@@ -25,9 +25,10 @@ struct MainMenuView: View {
 
     var body: some View {
         ZStack {
-            // The tub: Dogbeard peeks over the far rim, water fills the frame.
+            // The tub: your current rival peeks over the far rim — the menu
+            // itself is a progression trophy that changes as you climb.
             GeometryReader { geo in
-                Image("menu_background")
+                Image(profileStore.currentRival.menuBackground)
                     .resizable()
                     .scaledToFill()
                     .frame(width: geo.size.width, height: geo.size.height)
@@ -57,7 +58,7 @@ struct MainMenuView: View {
                         .shadow(color: .white.opacity(0.7), radius: 8)
                         .minimumScaleFactor(0.7)
                         .lineLimit(1)
-                    Text("Captain Pugbeard awaits...")
+                    Text("\(profileStore.currentRival.name) awaits...")
                         .font(.headline.weight(.bold))
                         .foregroundStyle(Color(red: 0.2, green: 0.4, blue: 0.6))
                         .shadow(color: .white.opacity(0.8), radius: 3)

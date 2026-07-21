@@ -53,6 +53,17 @@ struct Captain: Identifiable, Equatable {
         (Self.roster.firstIndex(of: self) ?? 0) + 1
     }
 
+    /// Main-menu key art: this captain peeking over the tub rim. The menu
+    /// shows the player's current (furthest unlocked) rival.
+    var menuBackground: String {
+        switch id {
+        case "soapySal": "menu_sal"
+        case "barnacleBess": "menu_bess"
+        case "admiralBubbles": "menu_bubbles"
+        default: "menu_background"
+        }
+    }
+
     /// Defeated-and-teary portrait variant (shown when the player wins).
     var sadPortrait: String { portrait + "_sad" }
     /// Smug victory portrait variant (shown when the captain wins).

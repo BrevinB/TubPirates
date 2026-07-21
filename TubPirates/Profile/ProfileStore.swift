@@ -113,6 +113,11 @@ final class ProfileStore {
         return wins(against: requirement) >= requirement.winsToAdvance
     }
 
+    /// The furthest rival the player has unlocked — the face of the menu.
+    var currentRival: Captain {
+        Captain.roster.last { isUnlocked($0) } ?? .dogbeard
+    }
+
     func wins(against captain: Captain) -> Int {
         profile.captainWins[captain.id] ?? 0
     }

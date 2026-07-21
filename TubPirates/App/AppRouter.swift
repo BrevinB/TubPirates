@@ -63,7 +63,7 @@ struct RootView: View {
             // -welcome forces the story for testing; otherwise first launch only.
             // Debug deep links (-autoBattle / -screen) suppress it so headless
             // runs land where they aimed.
-            let debugLaunch = args.contains("-autoBattle") || args.contains("-screen")
+            let debugLaunch = args.contains("-autoBattle") || args.contains("-screen") || args.contains("-noWelcome")
             if args.contains("-welcome") || (!profileStore.hasSeenWelcome && !debugLaunch) {
                 showWelcome = true
             }
