@@ -43,6 +43,7 @@ private struct MatchContentView: View {
     @State private var finalReward = 0
     @State private var firstWinBonusApplied = false
     @State private var showBattleTips = false
+    @State private var unlockBanners: [UnlockBanner] = []
 
     var body: some View {
         ZStack {
@@ -118,10 +119,32 @@ private struct MatchContentView: View {
                     }
                     finalReward = reward
                     profileStore.award(coins: reward)
+                    // Snapshot progression gates so this win's threshold
+                    // crossings can be announced on the victory screen.
+                    let captainsBefore = Captain.roster.filter { profileStore.isUnlocked($0) }
+                    let stockBefore = ShotType.purchasable.filter { profileStore.isShotInStock($0) }
                     profileStore.recordResult(
                         won: viewModel.didWin,
                         againstCaptainID: viewModel.mode == .ai ? viewModel.captain.id : nil
                     )
+                    var banners: [UnlockBanner] = []
+                    for captain in Captain.roster
+                    where profileStore.isUnlocked(captain) && !captainsBefore.contains(captain) {
+                        banners.append(UnlockBanner(
+                            icon: captain.portrait,
+                            kicker: "NEW RIVAL UNLOCKED",
+                            title: captain.name
+                        ))
+                    }
+                    for shot in ShotType.purchasable
+                    where profileStore.isShotInStock(shot) && !stockBefore.contains(shot) {
+                        banners.append(UnlockBanner(
+                            icon: ShotPanelView.iconName(for: shot),
+                            kicker: "NEW IN THE ARMORY",
+                            title: shot.spec.displayName
+                        ))
+                    }
+                    unlockBanners = banners
                 }
                 showEndScreen = true
             }
@@ -137,6 +160,7 @@ private struct MatchContentView: View {
                     message: viewModel.endMessage,
                     coinReward: finalReward,
                     firstWinBonus: firstWinBonusApplied,
+                    unlocks: unlockBanners,
                     // Replaying the nearly-won onboarding battle would farm
                     // free coins — one gift per captain.
                     showRematch: !viewModel.isTutorial,

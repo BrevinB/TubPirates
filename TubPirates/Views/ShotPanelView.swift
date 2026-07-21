@@ -15,6 +15,11 @@ struct ShotPanelView: View {
         .flare: "icon_flare", .chainShot: "icon_chain", .fireworks: "icon_fireworks",
     ]
 
+    /// Shared lookup for other views (end-screen unlock banners).
+    static func iconName(for shot: ShotType) -> String {
+        iconNames[shot] ?? "icon_cannon"
+    }
+
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
             if let tooltipShot {

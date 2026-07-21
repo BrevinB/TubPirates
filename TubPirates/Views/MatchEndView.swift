@@ -1,5 +1,13 @@
 import SwiftUI
 
+/// A progression reward revealed on the victory screen.
+struct UnlockBanner: Identifiable {
+    let id = UUID()
+    let icon: String
+    let kicker: String
+    let title: String
+}
+
 /// One side of the end-screen duo. Captains have dedicated sad/gloat art;
 /// player avatars get a rendered "soggy loser" treatment instead.
 struct EndPortrait: Equatable {
@@ -15,6 +23,8 @@ struct MatchEndView: View {
     let message: String
     let coinReward: Int
     var firstWinBonus: Bool = false
+    /// Things this victory just unlocked (new rival, new armory stock).
+    var unlocks: [UnlockBanner] = []
     var showRematch: Bool = true
     /// When set (AI defeats with a drained stash), shows the gentle
     /// restock-the-armory door above the buttons.
@@ -95,6 +105,35 @@ struct MatchEndView: View {
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 6)
                                 .background(.white.opacity(0.9), in: Capsule())
+                        }
+                        ForEach(unlocks) { unlock in
+                            HStack(spacing: 10) {
+                                Image(unlock.icon)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 40, height: 40)
+                                    .clipShape(RoundedRectangle(cornerRadius: 9))
+                                    .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(.orange, lineWidth: 2))
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(unlock.kicker)
+                                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                                        .foregroundStyle(.orange)
+                                    Text(unlock.title)
+                                        .font(.system(size: 16, weight: .heavy, design: .rounded))
+                                        .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.08))
+                                }
+                                Image(systemName: "sparkles")
+                                    .foregroundStyle(.orange)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 13)
+                                    .fill(Color(red: 1, green: 0.96, blue: 0.85))
+                                    .strokeBorder(Color.orange, lineWidth: 2)
+                                    .shadow(color: .black.opacity(0.25), radius: 5, y: 3)
+                            )
+                            .transition(.scale(scale: 0.7).combined(with: .opacity))
                         }
                         DoubloonLabel(amount: displayedCoins, fontSize: 32, prefix: "+")
                             .foregroundStyle(.yellow)
