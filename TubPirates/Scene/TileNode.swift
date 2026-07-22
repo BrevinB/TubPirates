@@ -12,12 +12,13 @@ final class TileNode: SKSpriteNode {
         case revealedWater
     }
 
-    /// Alternating translucent water tints — checkered like the placement
-    /// grid, and see-through enough that the tub art breathes underneath.
+    /// Alternating water tints — checkered like the placement grid. Deeper
+    /// and mostly opaque so the board reads as its own play surface against
+    /// the pale tub water (and so intel tints have contrast to pop against).
     static func waterColor(for cell: Coordinate) -> SKColor {
         (cell.row + cell.col).isMultiple(of: 2)
-            ? SKColor(red: 0.45, green: 0.74, blue: 0.94, alpha: 0.62)
-            : SKColor(red: 0.55, green: 0.8, blue: 0.96, alpha: 0.48)
+            ? SKColor(red: 0.3, green: 0.6, blue: 0.87, alpha: 0.92)
+            : SKColor(red: 0.4, green: 0.69, blue: 0.92, alpha: 0.85)
     }
 
     private var waterColor: SKColor { Self.waterColor(for: cell) }
@@ -51,9 +52,11 @@ final class TileNode: SKSpriteNode {
             color = SKColor(red: 0.88, green: 0.22, blue: 0.15, alpha: 1)
             addMarkLabel("✕", color: SKColor(white: 0.1, alpha: 1))
         case .revealedShip:
-            color = SKColor(red: 0.98, green: 0.82, blue: 0.3, alpha: 0.95)
+            color = SKColor(red: 0.98, green: 0.82, blue: 0.3, alpha: 1)
         case .revealedWater:
-            color = SKColor(red: 0.62, green: 0.87, blue: 0.99, alpha: 0.9)
+            // Scouted-and-empty: bright foam white, unmistakable against the
+            // deep checker water.
+            color = SKColor(red: 0.92, green: 0.97, blue: 1, alpha: 0.95)
         }
     }
 
