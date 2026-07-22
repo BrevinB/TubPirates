@@ -203,6 +203,7 @@ final class ProfileStore {
         let reward = Int.random(in: 15...30) * 5 // 75...150 in doubloon-y steps
         profile.lastDailyChestClaim = Date()
         profile.coins += reward
+        profile.lifetimeDoubloons += reward
         save()
         return reward
     }
@@ -223,6 +224,17 @@ final class ProfileStore {
 
     func award(coins amount: Int) {
         profile.coins += amount
+        if amount > 0 {
+            profile.lifetimeDoubloons += amount
+        }
+        save()
+    }
+
+    /// Merges the specials fired this battle into the lifetime record.
+    func recordSpecialsFired(_ shots: Set<ShotType>) {
+        let new = shots.subtracting(profile.firedSpecials)
+        guard !new.isEmpty else { return }
+        profile.firedSpecials.formUnion(new)
         save()
     }
 

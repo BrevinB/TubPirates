@@ -142,6 +142,12 @@ final class MatchViewModel {
     }
 
     let isTutorial: Bool
+    /// Specials the local player fired this battle (achievement tracking).
+    private(set) var localSpecialsFired: Set<ShotType> = []
+    /// Won without a single enemy shot landing.
+    var wasFlawlessVictory: Bool {
+        didWin && state.boards[localPlayer]?.hitCells.isEmpty == true
+    }
     /// Equipped cosmetic fleet for the local player's own board (set by the view).
     var playerFleetID: String = "classic"
     /// The rival's fleet skin: ladder captains show off premium sets.
@@ -415,9 +421,13 @@ final class MatchViewModel {
             return
         }
 
-        // Consumable accounting: a fired special is spent the moment it resolves.
-        if consumesInventory, move.player == localPlayer, move.shot != .cannon {
-            onLocalSpecialFired?(move.shot)
+        if move.player == localPlayer, move.shot != .cannon {
+            // Lifetime record for achievements (any mode, consumed or comped).
+            localSpecialsFired.insert(move.shot)
+            // Consumable accounting: a fired special is spent when it resolves.
+            if consumesInventory {
+                onLocalSpecialFired?(move.shot)
+            }
         }
 
         await renderer?.playResolution(resolution, onEnemyBoard: move.player == localPlayer)

@@ -11,6 +11,7 @@ struct MainMenuView: View {
     @State private var hasSavedMatch = MatchSaveStore.hasSave
     @State private var claimedChestAmount: Int?
     @State private var showDoubloonShop = false
+    @State private var showGameCenterDashboard = false
 
     private var debugAllShots: Bool {
         UserDefaults.standard.bool(forKey: "debugAllShots")
@@ -136,6 +137,10 @@ struct MainMenuView: View {
         }
         .sheet(isPresented: $showDoubloonShop) {
             DoubloonShopView()
+        }
+        .sheet(isPresented: $showGameCenterDashboard) {
+            GameCenterDashboardView()
+                .ignoresSafeArea()
         }
         .sheet(isPresented: $showMatchmaker) {
             MatchmakerSheet(
@@ -263,12 +268,24 @@ struct MainMenuView: View {
     }
 
     private var recordChip: some View {
-        Text("\(profileStore.profile.wins)W – \(profileStore.profile.losses)L")
-            .font(.system(size: 15, weight: .bold, design: .rounded))
-            .foregroundStyle(.white.opacity(0.9))
+        Button {
+            SoundService.shared.play(.tap)
+            showGameCenterDashboard = true
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "trophy.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.yellow)
+                Text("\(profileStore.profile.wins)W – \(profileStore.profile.losses)L")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.9))
+            }
             .padding(.horizontal, 14)
             .padding(.vertical, 9)
             .background(.black.opacity(0.3), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Record and achievements")
     }
 
     private func menuButton(_ title: String, icon: String, tint: Color, action: @escaping () -> Void) -> some View {

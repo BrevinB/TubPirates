@@ -21,6 +21,10 @@ struct PlayerProfile: Codable, Equatable {
     var lastDailyChestClaim: Date?
     /// When the first-win-of-the-day bonus was last granted.
     var lastFirstWinBonus: Date?
+    /// Total doubloons ever earned (never decremented) — leaderboard fodder.
+    var lifetimeDoubloons: Int = 0
+    /// Every special shot type the player has ever fired (achievement).
+    var firedSpecials: Set<ShotType> = []
     /// First-launch welcome story has been shown.
     var hasSeenWelcome: Bool = false
     /// First-battle coach marks have been shown.
@@ -49,6 +53,9 @@ struct PlayerProfile: Codable, Equatable {
             ?? [:]
         lastDailyChestClaim = try container.decodeIfPresent(Date.self, forKey: .lastDailyChestClaim)
         lastFirstWinBonus = try container.decodeIfPresent(Date.self, forKey: .lastFirstWinBonus)
+        // Migration: best-effort seed from current balance.
+        lifetimeDoubloons = try container.decodeIfPresent(Int.self, forKey: .lifetimeDoubloons) ?? max(coins, 0)
+        firedSpecials = try container.decodeIfPresent(Set<ShotType>.self, forKey: .firedSpecials) ?? []
         // Veterans who predate onboarding shouldn't be walked through it.
         let isVeteran = wins + losses > 0
         hasSeenWelcome = try container.decodeIfPresent(Bool.self, forKey: .hasSeenWelcome) ?? isVeteran

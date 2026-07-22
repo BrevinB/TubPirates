@@ -172,6 +172,11 @@ private struct MatchContentView: View {
                         ))
                     }
                     unlockBanners = banners
+                    profileStore.recordSpecialsFired(viewModel.localSpecialsFired)
+                    AchievementReporter.reportProgress(
+                        profile: profileStore.profile,
+                        flawlessWin: viewModel.wasFlawlessVictory && !viewModel.isTutorial
+                    )
                 }
                 showEndScreen = true
             }
