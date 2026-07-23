@@ -6,9 +6,8 @@ import TelemetryDeck
 /// All call sites go through here so the SDK stays swappable and the
 /// opt-out toggle is enforced in one place.
 enum Analytics {
-    /// Paste your App ID from dashboard.telemetrydeck.com (Apps → your app).
-    /// Until then, analytics is a silent no-op — the app runs fine without it.
-    private static let appID = "YOUR-TELEMETRYDECK-APP-ID"
+    /// TelemetryDeck App ID (dashboard.telemetrydeck.com → Tub Pirates).
+    private static let appID = "6E6BA07C-F27F-466F-9DEA-8D968C74FFF3"
 
     private static var isConfigured = false
 
