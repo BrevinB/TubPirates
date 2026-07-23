@@ -7,6 +7,7 @@ struct SettingsView: View {
     @AppStorage("soundEnabled") private var soundEnabled = true
     @AppStorage("musicEnabled") private var musicEnabled = true
     @AppStorage("debugAllShots") private var debugAllShots = false
+    @AppStorage("analyticsEnabled") private var analyticsEnabled = true
     @State private var confirmReset = false
 
     private let ink = Color(red: 0.12, green: 0.3, blue: 0.52)
@@ -39,6 +40,14 @@ struct SettingsView: View {
                             }
                         divider
                         toggleRow("Haptics", icon: "iphone.radiowaves.left.and.right", isOn: $hapticsEnabled)
+                    }
+
+                    card("Privacy", icon: "hand.raised.fill") {
+                        toggleRow("Anonymous Analytics", icon: "chart.bar.fill", isOn: $analyticsEnabled)
+                            .onChange(of: analyticsEnabled) { _, on in
+                                if on { Analytics.start() }
+                            }
+                        footnote("Anonymous gameplay statistics (battles played, features used) help improve the game. No personal data, no tracking, ever.")
                     }
 
                     #if DEBUG

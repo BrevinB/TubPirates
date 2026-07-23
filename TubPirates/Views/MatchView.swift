@@ -71,6 +71,7 @@ private struct MatchContentView: View {
             if showBattleTips {
                 BattleTipsView {
                     profileStore.markBattleTipsSeen()
+                    Analytics.battleTipsFinished()
                     withAnimation { showBattleTips = false }
                 }
                 .zIndex(20)
@@ -129,6 +130,13 @@ private struct MatchContentView: View {
                     profileStore.recordResult(
                         won: viewModel.didWin,
                         againstCaptainID: viewModel.mode == .ai ? viewModel.captain.id : nil
+                    )
+                    Analytics.battleFinished(
+                        mode: analyticsModeName(viewModel.mode),
+                        captainID: viewModel.mode == .ai ? viewModel.captain.id : nil,
+                        won: viewModel.didWin,
+                        reward: reward,
+                        isTutorial: viewModel.isTutorial
                     )
                     var banners: [UnlockBanner] = []
                     for captain in Captain.roster
@@ -368,6 +376,14 @@ private struct MatchContentView: View {
             .background(.black.opacity(0.4), in: Capsule())
     }
 
+    private func analyticsModeName(_ mode: MatchConfig.Mode) -> String {
+        switch mode {
+        case .ai: "ai"
+        case .passAndPlay: "passAndPlay"
+        case .gameCenter: "online"
+        }
+    }
+
     private func startMatchIfNeeded() {
         guard viewModel == nil, !waitingForOpponent else { return }
         let forceTips = CommandLine.arguments.contains("-battleTips")
@@ -389,8 +405,14 @@ private struct MatchContentView: View {
     }
 
     private func attach(_ newViewModel: MatchViewModel) {
+        Analytics.battleStarted(
+            mode: analyticsModeName(newViewModel.mode),
+            captainID: newViewModel.mode == .ai ? newViewModel.captain.id : nil,
+            isTutorial: newViewModel.isTutorial
+        )
         newViewModel.onLocalSpecialFired = { shot in
             profileStore.consumeUse(of: shot)
+            Analytics.specialFired(String(describing: shot))
         }
         newViewModel.playerFleetID = profileStore.fleet.id
         let newScene = BattleScene()

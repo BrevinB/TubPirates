@@ -61,8 +61,9 @@ Easy to learn, quick to play, hard to put down. The water's warm — climb in, C
 4+ (questionnaire: all "None" — cartoon toy combat doesn't count as realistic violence)
 
 ## Privacy
-- Nutrition label: **Data Not Collected** (no analytics, no tracking, no accounts; Game Center is Apple-operated)
-- Privacy policy URL: required anyway — host a one-pager (GitHub Pages works): "Tub Pirates does not collect, store, or share any personal data. Online multiplayer is provided by Apple Game Center under Apple's privacy policy."
+- Nutrition label (with TelemetryDeck analytics): **Usage Data → Product Interaction** — collected, **NOT linked to identity**, **NOT used for tracking**. Everything else: not collected. (TelemetryDeck anonymizes all signals; no ATT prompt needed.)
+- In-app: Settings → Privacy has an "Anonymous Analytics" opt-out toggle (default on).
+- Privacy policy URL: required — host a one-pager (GitHub Pages works): "Tub Pirates collects anonymous, aggregated gameplay statistics via TelemetryDeck to improve the game (e.g. battles played, features used). No personal data is collected, and nothing is linked to you or used for tracking. You can disable this in Settings. Online multiplayer is provided by Apple Game Center under Apple's privacy policy."
 
 ## URLs & Legal
 - Support URL: required — GitHub repo issues page or a simple contact page

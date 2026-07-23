@@ -17,7 +17,10 @@ struct WelcomeView: View {
                 HStack {
                     Spacer()
                     if page < 2 {
-                        Button("Skip") { onFinish() }
+                        Button("Skip") {
+                            Analytics.onboardingFinished(skipped: true)
+                            onFinish()
+                        }
                             .font(.headline.weight(.bold))
                             .foregroundStyle(Color(red: 0.2, green: 0.4, blue: 0.6))
                             .padding(.horizontal, 18)
@@ -55,6 +58,7 @@ struct WelcomeView: View {
                     if page < 2 {
                         withAnimation { page += 1 }
                     } else {
+                        Analytics.onboardingFinished(skipped: false)
                         onFinish()
                     }
                 } label: {

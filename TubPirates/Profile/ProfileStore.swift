@@ -60,6 +60,7 @@ final class ProfileStore {
         profile.ownedAvatars.insert(avatar.id)
         profile.avatarID = avatar.id // equipping your new treasure immediately feels right
         save()
+        Analytics.purchase(kind: "avatar", itemID: avatar.id, price: avatar.price)
         return true
     }
 
@@ -128,6 +129,7 @@ final class ProfileStore {
         profile.ownedFleets.insert(fleet.id)
         profile.fleetID = fleet.id
         save()
+        Analytics.purchase(kind: "fleet", itemID: fleet.id, price: fleet.price)
         return true
     }
 
@@ -205,6 +207,7 @@ final class ProfileStore {
         profile.coins += reward
         profile.lifetimeDoubloons += reward
         save()
+        Analytics.dailyChestClaimed(amount: reward)
         return reward
     }
 
@@ -243,6 +246,7 @@ final class ProfileStore {
             profile.wins += 1
             if let id = againstCaptainID {
                 profile.captainWins[id, default: 0] += 1
+                Analytics.captainDefeated(id, totalWins: profile.captainWins[id, default: 0])
             }
         } else {
             profile.losses += 1
@@ -258,6 +262,7 @@ final class ProfileStore {
         profile.coins -= shot.spec.coinCost
         profile.shotInventory[shot, default: 0] += 1
         save()
+        Analytics.purchase(kind: "shot", itemID: String(describing: shot), price: shot.spec.coinCost)
         return true
     }
 

@@ -58,6 +58,7 @@ struct RootView: View {
         .onAppear {
             SoundService.shared.warmUp()
             SoundService.shared.startMusic()
+            Analytics.start()
             StoreService.shared.configureIfPossible()
             gameCenter.authenticate()
             let args = CommandLine.arguments

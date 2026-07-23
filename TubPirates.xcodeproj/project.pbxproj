@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		23F54038300F129C008A0440 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = RC00000000000000000000B1 /* RevenueCat */; };
 		BE00000000000000000000A1 /* BathtubEngine in Frameworks */ = {isa = PBXBuildFile; productRef = BE00000000000000000000A3 /* BathtubEngine */; };
+		TD00000000000000000000B1 /* TelemetryDeck in Frameworks */ = {isa = PBXBuildFile; productRef = TD00000000000000000000B3 /* TelemetryDeck */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +31,7 @@
 			files = (
 				23F54038300F129C008A0440 /* RevenueCat in Frameworks */,
 				BE00000000000000000000A1 /* BathtubEngine in Frameworks */,
+				TD00000000000000000000B1 /* TelemetryDeck in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -74,6 +76,7 @@
 			packageProductDependencies = (
 				RC00000000000000000000B1 /* RevenueCat */,
 				BE00000000000000000000A3 /* BathtubEngine */,
+				TD00000000000000000000B3 /* TelemetryDeck */,
 			);
 			productName = TubPirates;
 			productReference = 2334E096300888030025490E /* TubPirates.app */;
@@ -105,6 +108,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				BE00000000000000000000A2 /* XCLocalSwiftPackageReference "Packages/BathtubEngine" */,
+				TD00000000000000000000B2 /* XCRemoteSwiftPackageReference "SwiftSDK" */,
 				RC00000000000000000000B0 /* XCRemoteSwiftPackageReference "purchases-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -379,6 +383,17 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		TD00000000000000000000B2 /* XCRemoteSwiftPackageReference "SwiftSDK" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/TelemetryDeck/SwiftSDK";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
 		RC00000000000000000000B0 /* XCRemoteSwiftPackageReference "purchases-ios" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/RevenueCat/purchases-ios.git";
@@ -390,6 +405,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		TD00000000000000000000B3 /* TelemetryDeck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = TD00000000000000000000B2 /* XCRemoteSwiftPackageReference "SwiftSDK" */;
+			productName = TelemetryDeck;
+		};
 		BE00000000000000000000A3 /* BathtubEngine */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = BathtubEngine;
