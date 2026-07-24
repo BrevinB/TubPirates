@@ -87,7 +87,7 @@ Ahoy! Tub Pirates sets sail — sink Captain Pugbeard's fleet, climb the captain
 
 ## App Review notes (in the submission's Review Notes field)
 - Game Center turn-based multiplayer: matchmaking requires two accounts; single-player ladder is fully testable without any account.
-- No IAP at launch. No login. No data collection.
+- No IAP at launch. No login. Only anonymous, non-linked usage analytics (TelemetryDeck), user-disableable in Settings.
 
 ## Pre-submission checklist
 - [ ] App Store Connect record under bundle ID `co.brevinb.TubPirates`
