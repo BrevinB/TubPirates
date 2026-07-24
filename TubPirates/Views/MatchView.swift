@@ -336,8 +336,10 @@ private struct MatchContentView: View {
         ) {
             Button("Leave") {
                 if case .gameCenter(let matchID) = viewModel.mode {
-                    // Unblocking the wait resolves it as a forfeit on the
-                    // abandoned view model — make sure that can't pay out.
+                    // Mark the abandonment BEFORE unblocking the wait so the
+                    // resumed task neither declares a forfeit win (which
+                    // flashed the victory screen on exit) nor pays out.
+                    viewModel.abandon()
                     rewardApplied = true
                     GameCenterService.shared.controller(for: matchID)?.cancelWaiting()
                     GameCenterService.shared.releaseController(for: matchID)

@@ -299,6 +299,14 @@ final class MatchViewModel {
     /// show, but rewards were paid when it actually finished.
     private(set) var arrivedFinished = false
 
+    /// Set when the local player leaves the match screen mid-game, so the
+    /// unblocked opponent-wait can't masquerade as a forfeit win.
+    private(set) var isAbandoned = false
+
+    func abandon() {
+        isAbandoned = true
+    }
+
     /// Online matches arrive with a server-synced state and an assigned seat.
     init(gameCenterState: GameState, localPlayer: PlayerID, controller: GameCenterController) {
         consumesInventory = false
@@ -506,7 +514,11 @@ final class MatchViewModel {
         guard let opponent else { return }
         turnState = .opponentThinking
         guard let opponentMove = await opponent.nextMove(state: state) else {
-            // Opponent forfeited (online quit).
+            // nil means the wait ended without a move. If WE abandoned the
+            // screen (Leave button unblocks the wait), just stop — declaring
+            // a forfeit win here flashed the victory screen on the way out.
+            guard !isAbandoned else { return }
+            // Otherwise the opponent forfeited (online quit/timeout).
             turnState = .finished(winner: localPlayer)
             return
         }
