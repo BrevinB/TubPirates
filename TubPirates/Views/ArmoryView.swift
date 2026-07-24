@@ -16,6 +16,7 @@ struct ArmoryView: View {
         ZStack {
             ScreenBackground(imageName: "armory_background")
 
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 14) {
                     Text("Stock up before battle — every shot you fire is spent from your stash!")
@@ -35,6 +36,7 @@ struct ArmoryView: View {
                         .foregroundStyle(Color(red: 1, green: 0.94, blue: 0.8))
                         .shadow(color: .black.opacity(0.6), radius: 2, y: 1)
                         .padding(.top, 14)
+                        .id("shipyard")
                     Text("New looks for yer whole fleet — pure style, same firepower.")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundStyle(Color(red: 1, green: 0.94, blue: 0.8).opacity(0.9))
@@ -47,6 +49,13 @@ struct ArmoryView: View {
                     }
                 }
                 .padding()
+            }
+            .onAppear {
+                // Debug: land scrolled to the Shipyard (screenshot staging).
+                if CommandLine.arguments.contains("-shipyard") {
+                    proxy.scrollTo("shipyard", anchor: .top)
+                }
+            }
             }
         }
         .confirmationDialog(

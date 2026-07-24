@@ -88,6 +88,19 @@ final class ProfileStore {
     }
 
     /// Debug: clear every ladder rung (champion state).
+    /// Debug: "-wins dogbeard=3,soapySal=2" sets exact per-captain win counts.
+    func debugSetWins(_ spec: String) {
+        var wins: [String: Int] = [:]
+        for pair in spec.split(separator: ",") {
+            let parts = pair.split(separator: "=")
+            if parts.count == 2, let count = Int(parts[1]) {
+                wins[String(parts[0])] = count
+            }
+        }
+        profile.captainWins = wins
+        save()
+    }
+
     func debugConquerLadder() {
         for captain in Captain.roster {
             profile.captainWins[captain.id] = max(

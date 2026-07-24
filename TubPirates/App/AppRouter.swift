@@ -81,6 +81,10 @@ struct RootView: View {
             if args.contains("-champion") {
                 profileStore.debugConquerLadder()
             }
+            // Debug: -wins dogbeard=3,soapySal=2 stages exact ladder progress.
+            if let index = args.firstIndex(of: "-wins"), index + 1 < args.count {
+                profileStore.debugSetWins(args[index + 1])
+            }
             if args.contains("-autoBattle") {
                 let mode: MatchConfig.Mode = args.contains("-pnp") ? .passAndPlay : .ai
                 // -consume: use the real stash + consumable accounting (for testing).

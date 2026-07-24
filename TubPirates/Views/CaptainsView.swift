@@ -161,6 +161,11 @@ struct CaptainsView: View {
                     Text("Next rival unlocked!")
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundStyle(.green)
+                        .lineLimit(2)
+                        // Squeezed beside 4-5 pips + the reward chip, this text
+                        // used to collapse into a one-character-wide column.
+                        .layoutPriority(1)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             } else {
                 Text("\(wins) wins")
