@@ -75,17 +75,47 @@ final class MatchViewModel {
         state.boards[localPlayer] ?? Board()
     }
 
+    /// Online rival identity: Game Center display name + the avatar they
+    /// chose in-game (carried inside the match data).
+    var onlineOpponentName: String?
+    var onlineOpponentAvatarID: String?
+
+    #if DEBUG
+    /// Screenshot staging: -enemyName / -enemyAvatar override the rival's
+    /// HUD identity (and mute captain table talk so the frame reads online).
+    static let debugEnemyName: String? = {
+        let args = CommandLine.arguments
+        guard let index = args.firstIndex(of: "-enemyName"), index + 1 < args.count else { return nil }
+        return args[index + 1]
+    }()
+    static let debugEnemyAvatar: String? = {
+        let args = CommandLine.arguments
+        guard let index = args.firstIndex(of: "-enemyAvatar"), index + 1 < args.count else { return nil }
+        return args[index + 1]
+    }()
+    #endif
+
     func displayName(for player: PlayerID) -> String {
+        #if DEBUG
+        if let name = Self.debugEnemyName, player != localPlayer { return name }
+        #endif
         switch mode {
-        case .ai: player == localPlayer ? "You" : captain.name
-        case .passAndPlay: player == .one ? "Captain 1" : "Captain 2"
-        case .gameCenter: player == localPlayer ? "You" : "Opponent"
+        case .ai: return player == localPlayer ? "You" : captain.name
+        case .passAndPlay: return player == .one ? "Captain 1" : "Captain 2"
+        case .gameCenter: return player == localPlayer ? "You" : (onlineOpponentName ?? "Opponent")
         }
     }
 
     /// Portrait asset for the enemy card in the HUD.
     var enemyPortrait: String {
-        mode == .ai ? captain.portrait : "portrait_dogbeard"
+        #if DEBUG
+        if let avatar = Self.debugEnemyAvatar { return avatar }
+        #endif
+        switch mode {
+        case .ai: return captain.portrait
+        case .passAndPlay: return "portrait_player"
+        case .gameCenter: return onlineOpponentAvatarID ?? "portrait_player"
+        }
     }
 
     var statusText: String {
@@ -280,6 +310,8 @@ final class MatchViewModel {
         opponent = controller
         controller.markKnown(state: gameCenterState)
         arrivedFinished = state.phase != .active
+        onlineOpponentName = controller.opponentDisplayName
+        onlineOpponentAvatarID = controller.opponentAvatarID
     }
 
     /// Called once the scene is wired up; kicks off auto-play when enabled.
@@ -512,6 +544,9 @@ final class MatchViewModel {
     }
 
     private func speak(_ event: DialogEvent) {
+        #if DEBUG
+        if Self.debugEnemyName != nil { return } // staged online frame: no captain banter
+        #endif
         guard let line = CaptainDialog.line(for: event, from: captain, using: &dialogRNG) else { return }
         captainLine = line
         dialogDismissTask?.cancel()

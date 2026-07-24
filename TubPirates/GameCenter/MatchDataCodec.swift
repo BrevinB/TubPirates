@@ -9,6 +9,9 @@ import BathtubEngine
 struct OnlineMatchData: Codable {
     var boards: [String: Board] = [:]
     var state: GameState?
+    /// Each seat's chosen in-game avatar ("0"/"1" → avatarID), so rivals see
+    /// your duck, not a placeholder. Optional for pre-existing match data.
+    var avatars: [String: String]?
 
     var isReadyForBattle: Bool {
         state != nil

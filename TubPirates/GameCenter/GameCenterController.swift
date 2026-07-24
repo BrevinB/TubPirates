@@ -24,6 +24,27 @@ final class GameCenterController: OpponentController {
     /// participant still held the turn (only the current participant may
     /// write match data). Submitted from the turn event that makes us current.
     var pendingSetupBoard: Board?
+    /// Avatar accompanying a parked setup.
+    var pendingSetupAvatarID: String?
+
+    /// The rival's identity for the HUD: their Game Center display name and
+    /// the in-game avatar they carried in the match data.
+    var opponentDisplayName: String? {
+        let other = match.participants.first {
+            $0.player?.gamePlayerID != GKLocalPlayer.local.gamePlayerID
+        }
+        return other?.player?.displayName
+    }
+
+    private(set) var opponentAvatarID: String?
+
+    /// Pulls the rival's avatar out of decoded match data.
+    func noteAvatars(from data: OnlineMatchData) {
+        let opponentKey = localPlayer == .one ? "1" : "0"
+        if let avatar = data.avatars?[opponentKey] {
+            opponentAvatarID = avatar
+        }
+    }
 
     init(match: GKTurnBasedMatch, localPlayer: PlayerID) {
         self.match = match
@@ -43,12 +64,18 @@ final class GameCenterController: OpponentController {
         return MatchDataCodec.decode(data)
     }
 
-    /// Contributes the local board; initializes the GameState when both boards are in.
-    /// Ends the setup turn so the other participant proceeds.
-    func submitSetup(board: Board) async throws -> OnlineMatchData {
+    /// Contributes the local board (and avatar); initializes the GameState when
+    /// both boards are in. Ends the setup turn so the other participant proceeds.
+    func submitSetup(board: Board, avatarID: String? = nil) async throws -> OnlineMatchData {
         var data = MatchDataCodec.decode(try await match.loadMatchData())
         let seatKey = localPlayer == .one ? "0" : "1"
         data.boards[seatKey] = board
+        if let avatarID {
+            var avatars = data.avatars ?? [:]
+            avatars[seatKey] = avatarID
+            data.avatars = avatars
+        }
+        noteAvatars(from: data)
 
         if data.state == nil, let one = data.boards["0"], let two = data.boards["1"] {
             // Both fleets placed — battle begins; everyone gets the full arsenal online.
@@ -133,14 +160,17 @@ final class GameCenterController: OpponentController {
         }
 
         let data = MatchDataCodec.decode(updatedMatch.matchData)
+        noteAvatars(from: data)
 
         // Deferred setup: we placed before the turn was ours; now that the
         // other captain has moved on, contribute our fleet.
         if data.state == nil, let board = pendingSetupBoard,
            updatedMatch.currentParticipant?.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID {
             pendingSetupBoard = nil
+            let avatarID = pendingSetupAvatarID
+            pendingSetupAvatarID = nil
             Task {
-                guard let newData = try? await submitSetup(board: board),
+                guard let newData = try? await submitSetup(board: board, avatarID: avatarID),
                       let state = newData.state else { return }
                 let callback = onStateReady
                 onStateReady = nil

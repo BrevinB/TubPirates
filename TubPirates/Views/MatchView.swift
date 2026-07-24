@@ -254,8 +254,8 @@ private struct MatchContentView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     PlayerHUDView(
                         imageName: viewModel.enemyPortrait,
-                        name: viewModel.displayName(for: .two),
-                        highlighted: viewModel.highlightedPlayer == .two
+                        name: viewModel.displayName(for: viewModel.localPlayer.opponent),
+                        highlighted: viewModel.highlightedPlayer == viewModel.localPlayer.opponent
                     )
                     leaveButton(viewModel)
                 }
@@ -264,8 +264,8 @@ private struct MatchContentView: View {
                 Spacer()
                 PlayerHUDView(
                     imageName: viewModel.mode == .passAndPlay ? "portrait_player" : profileStore.avatarID,
-                    name: viewModel.displayName(for: .one),
-                    highlighted: viewModel.highlightedPlayer == .one
+                    name: viewModel.displayName(for: viewModel.localPlayer),
+                    highlighted: viewModel.highlightedPlayer == viewModel.localPlayer
                 )
             }
             .padding(.horizontal, 12)
@@ -437,14 +437,16 @@ private struct MatchContentView: View {
             do {
                 var data = try await GameCenterController.loadGame(from: match)
                 let seatKey = seat == .one ? "0" : "1"
+                controller.noteAvatars(from: data)
                 if data.boards[seatKey] == nil, let board = config.playerBoard {
                     // Only the current participant may write match data. If the
                     // rival is still placing (simultaneous auto-match), park our
                     // fleet — the controller submits it when the turn arrives.
                     if match.currentParticipant?.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID {
-                        data = try await controller.submitSetup(board: board)
+                        data = try await controller.submitSetup(board: board, avatarID: profileStore.avatarID)
                     } else {
                         controller.pendingSetupBoard = board
+                        controller.pendingSetupAvatarID = profileStore.avatarID
                     }
                 }
                 if let state = data.state {
