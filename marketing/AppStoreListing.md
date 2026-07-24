@@ -94,7 +94,7 @@ Ahoy! Tub Pirates sets sail — sink Captain Pugbeard's fleet, climb the captain
 - [ ] Enable Game Center capability on the ASC app record (turn-based matches)
 - [ ] Replace synthesized SFX placeholders if desired (explosion, chest, tap, pop, victory, defeat, parrot)
 - [ ] CREDITS/licensing notes for Suno music + ElevenLabs SFX (paid-plan provenance)
-- [ ] 6.9" screenshot set (and iPad set if `TARGETED_DEVICE_FAMILY` includes iPad — or drop iPad from the target)
+- [x] 6.9" screenshot set — DONE: `screenshots/final/01-05*.jpg` (1320×2868, upload in numbered order). iPad: still decide (drop from target or make an iPad set).
 - [ ] Privacy policy + support URLs live
 - [ ] Test onboarding on a clean install (fresh sandbox already verified)
 ```
