@@ -13,6 +13,8 @@ struct UnlockBanner: Identifiable {
 struct EndPortrait: Equatable {
     let imageName: String
     var renderSad: Bool = false
+    /// Optional name shown under the card (used online: "You" vs the rival).
+    var caption: String?
 }
 
 struct MatchEndView: View {
@@ -29,6 +31,8 @@ struct MatchEndView: View {
     /// When set (AI defeats with a drained stash), shows the gentle
     /// restock-the-armory door above the buttons.
     var onArmory: (() -> Void)? = nil
+    /// When set, offers a peek at the rival's board (where WERE those ships?).
+    var onViewFleet: (() -> Void)? = nil
     let onRematch: () -> Void
     let onExit: () -> Void
 
@@ -184,6 +188,16 @@ struct MatchEndView: View {
                 }
 
                 VStack(spacing: 14) {
+                    if let onViewFleet {
+                        Button(action: onViewFleet) {
+                            Label("View Their Fleet", systemImage: "eye.fill")
+                                .font(.headline.weight(.bold))
+                                .frame(maxWidth: 300)
+                                .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(didWin ? Color(red: 0.45, green: 0.3, blue: 0.1) : .white)
+                    }
                     if showRematch {
                         Button(action: onRematch) {
                             Label("Rematch", systemImage: "arrow.clockwise")
@@ -239,6 +253,21 @@ struct MatchEndView: View {
     /// A portrait card; `renderSad` applies the soggy-loser treatment for
     /// images that don't have dedicated sad art (player avatars).
     private func portraitCard(_ portrait: EndPortrait, size: CGFloat, cornerRadius: CGFloat) -> some View {
+        VStack(spacing: 6) {
+            portraitImage(portrait, size: size, cornerRadius: cornerRadius)
+            if let caption = portrait.caption {
+                Text(caption)
+                    .font(.system(size: size > 100 ? 15 : 12, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(.black.opacity(0.45), in: Capsule())
+            }
+        }
+    }
+
+    private func portraitImage(_ portrait: EndPortrait, size: CGFloat, cornerRadius: CGFloat) -> some View {
         Image(portrait.imageName)
             .resizable()
             .scaledToFill()

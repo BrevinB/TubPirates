@@ -12,13 +12,28 @@ struct MatchView: View {
     var body: some View {
         MatchContentView(config: config, path: $path) {
             // AI rematches go back through placement (pre-seeded with the
-            // previous layout) so the fleet can be repositioned. Other modes
-            // just rebuild in place.
+            // previous layout) so the fleet can be repositioned.
             if case .ai = config.mode {
                 var next = config
                 next.resume = false
                 next.tutorial = false
                 path = [.placement(next)]
+                return
+            }
+            // Online: a real Game Center rematch — new match, same rivals.
+            // Rebuilding the old (ended) match just replayed the end screen.
+            if case .gameCenter(let oldMatchID) = config.mode {
+                Task {
+                    let service = GameCenterService.shared
+                    guard let old = service.matches[oldMatchID],
+                          let new = try? await old.rematch() else {
+                        path = [.harbor] // rematch declined/failed: back to port
+                        return
+                    }
+                    service.releaseController(for: oldMatchID)
+                    let route = await service.destination(for: new)
+                    path = Array(path.dropLast()) + [route]
+                }
                 return
             }
             matchID = UUID()
@@ -44,6 +59,8 @@ private struct MatchContentView: View {
     @State private var firstWinBonusApplied = false
     @State private var showBattleTips = false
     @State private var unlockBanners: [UnlockBanner] = []
+    /// Post-game peek at the rival's true board, entered from the end screen.
+    @State private var showingFleetPeek = false
 
     var body: some View {
         ZStack {
@@ -65,6 +82,34 @@ private struct MatchContentView: View {
                     .transition(.opacity)
                     .zIndex(10)
                 }
+            }
+
+            // Post-game fleet peek: rival's board revealed behind this bar.
+            if showingFleetPeek {
+                VStack {
+                    Spacer()
+                    VStack(spacing: 10) {
+                        Text("Their fleet, revealed!")
+                            .font(.system(size: 15, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 7)
+                            .background(.black.opacity(0.45), in: Capsule())
+                        Button {
+                            showingFleetPeek = false
+                            showEndScreen = true
+                        } label: {
+                            Label("Back to Results", systemImage: "chevron.backward")
+                                .font(.headline.weight(.bold))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.orange)
+                    }
+                    .padding(.bottom, 24)
+                }
+                .zIndex(15)
             }
 
             // One-time first-battle coach marks (blocks input until tapped through).
@@ -205,6 +250,11 @@ private struct MatchContentView: View {
                     // free coins — one gift per captain.
                     showRematch: !viewModel.isTutorial,
                     onArmory: armoryOffer(viewModel),
+                    onViewFleet: viewModel.mode == .passAndPlay || viewModel.isTutorial ? nil : {
+                        showEndScreen = false
+                        showingFleetPeek = true
+                        scene?.revealEnemyFleet()
+                    },
                     onRematch: {
                         showEndScreen = false
                         onRematch()
@@ -239,6 +289,20 @@ private struct MatchContentView: View {
             // Both captains are humans sharing the generic portrait.
             return (EndPortrait(imageName: playerImage),
                     EndPortrait(imageName: playerImage, renderSad: true))
+        }
+        if case .gameCenter = viewModel.mode {
+            // Online: the duo is you and your actual rival, names attached.
+            let rival = EndPortrait(
+                imageName: viewModel.enemyPortrait,
+                renderSad: viewModel.didWin,
+                caption: viewModel.onlineOpponentName ?? "Rival"
+            )
+            let you = EndPortrait(
+                imageName: playerImage,
+                renderSad: !viewModel.didWin,
+                caption: "You"
+            )
+            return viewModel.didWin ? (you, rival) : (rival, you)
         }
         if viewModel.didWin {
             return (EndPortrait(imageName: playerImage),

@@ -77,6 +77,12 @@ final class MatchViewModel {
         state.boards[localPlayer] ?? Board()
     }
 
+    /// The rival's true board — only meaningful once the match is over
+    /// (the post-game "where WERE those ships?" reveal).
+    var enemyFullBoard: Board {
+        state.boards[localPlayer.opponent] ?? Board()
+    }
+
     /// Online rival identity: Game Center display name + the avatar they
     /// chose in-game (carried inside the match data).
     var onlineOpponentName: String?
@@ -153,9 +159,10 @@ final class MatchViewModel {
         case .passAndPlay:
             return "\(displayName(for: winner.opponent))'s fleet rests at the bottom of the tub."
         case .gameCenter:
+            let rival = onlineOpponentName ?? "Yer rival"
             return winner == localPlayer
-                ? "Your rival's fleet rests at the bottom of the tub."
-                : "Your last ship gurgles to the bottom of the tub."
+                ? "\(rival)'s fleet rests at the bottom of the tub."
+                : "\(rival) sent yer last ship to the drain."
         }
     }
 

@@ -130,6 +130,14 @@ final class BattleScene: SKScene, BattleSceneRendering {
 
     // MARK: - BattleSceneRendering
 
+    /// Post-game reveal: draw the rival's board with every ship visible
+    /// (own-board rendering shows hulls plus the shot marks already made).
+    func revealEnemyFleet() {
+        guard let viewModel else { return }
+        enemyBoard.fleetSkin = FleetSkin.withID(viewModel.enemyFleetID)
+        enemyBoard.update(own: viewModel.enemyFullBoard)
+    }
+
     func refreshBoards() {
         guard let viewModel else { return }
         ownBoard.fleetSkin = FleetSkin.withID(viewModel.playerFleetID)
