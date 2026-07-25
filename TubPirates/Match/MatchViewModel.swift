@@ -54,7 +54,9 @@ final class MatchViewModel {
     /// Drives the end screen's celebratory vs somber styling.
     var didWin: Bool {
         guard case .finished(let winner) = turnState else { return false }
-        return mode == .passAndPlay || winner == .one
+        // Compare against the LOCAL seat — online, the joiner is seat two,
+        // and the old hardcoded `.one` made both clients claim the win.
+        return mode == .passAndPlay || winner == localPlayer
     }
 
     /// Which portrait to spotlight in the HUD right now.
