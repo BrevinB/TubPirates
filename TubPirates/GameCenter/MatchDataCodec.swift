@@ -12,6 +12,9 @@ struct OnlineMatchData: Codable {
     /// Each seat's chosen in-game avatar ("0"/"1" → avatarID), so rivals see
     /// your duck, not a placeholder. Optional for pre-existing match data.
     var avatars: [String: String]?
+    /// Each seat's latest canned taunt ("0"/"1" → Taunt). Optional for
+    /// pre-existing match data.
+    var taunts: [String: Taunt]?
 
     var isReadyForBattle: Bool {
         state != nil

@@ -88,6 +88,35 @@ final class MatchViewModel {
     var onlineOpponentName: String?
     var onlineOpponentAvatarID: String?
 
+    // MARK: - Quick chat (online canned taunts)
+
+    struct ChatLine: Equatable {
+        let text: String
+        let mine: Bool
+    }
+
+    /// The bubble currently on screen (yours trailing, rival's leading).
+    var chatLine: ChatLine?
+    /// Queued taunt; rides along with your next submitted turn.
+    private(set) var pendingTaunt: String?
+    private var chatDismissTask: Task<Void, Never>?
+
+    func sendTaunt(_ line: String) {
+        guard QuickChat.isValid(line) else { return }
+        pendingTaunt = line
+        showChat(ChatLine(text: line, mine: true))
+    }
+
+    private func showChat(_ line: ChatLine) {
+        chatLine = line
+        chatDismissTask?.cancel()
+        chatDismissTask = Task {
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            chatLine = nil
+        }
+    }
+
     #if DEBUG
     /// Screenshot staging: -enemyName / -enemyAvatar override the rival's
     /// HUD identity (and mute captain table talk so the frame reads online).
@@ -329,6 +358,9 @@ final class MatchViewModel {
         arrivedFinished = state.phase != .active
         onlineOpponentName = controller.opponentDisplayName
         onlineOpponentAvatarID = controller.opponentAvatarID
+        controller.onTaunt = { [weak self] message in
+            self?.showChat(ChatLine(text: message, mine: false))
+        }
     }
 
     /// Called once the scene is wired up; kicks off auto-play when enabled.
@@ -487,7 +519,8 @@ final class MatchViewModel {
         // (submitLocalTurn also ends the match when this move won it).
         if case .gameCenter = mode, move.player == localPlayer,
            let controller = opponent as? GameCenterController {
-            try? await controller.submitLocalTurn(state: state)
+            try? await controller.submitLocalTurn(state: state, taunt: pendingTaunt)
+            pendingTaunt = nil
         }
 
         saveIfNeeded()

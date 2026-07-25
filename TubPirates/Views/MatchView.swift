@@ -61,6 +61,8 @@ private struct MatchContentView: View {
     @State private var unlockBanners: [UnlockBanner] = []
     /// Post-game peek at the rival's true board, entered from the end screen.
     @State private var showingFleetPeek = false
+    /// Canned-taunt picker (online matches).
+    @State private var showChatSheet = false
 
     var body: some View {
         ZStack {
@@ -234,6 +236,10 @@ private struct MatchContentView: View {
                 showEndScreen = true
             }
         }
+        .sheet(isPresented: $showChatSheet) {
+            quickChatSheet
+                .presentationDetents([.medium])
+        }
         .fullScreenCover(isPresented: $showEndScreen) {
             if let viewModel {
                 let duo = endPortraits(viewModel)
@@ -326,27 +332,55 @@ private struct MatchContentView: View {
                 Spacer()
                 statusBanner(viewModel)
                 Spacer()
-                PlayerHUDView(
-                    imageName: viewModel.mode == .passAndPlay ? "portrait_player" : profileStore.avatarID,
-                    name: viewModel.displayName(for: viewModel.localPlayer),
-                    highlighted: viewModel.highlightedPlayer == viewModel.localPlayer
-                )
+                VStack(alignment: .trailing, spacing: 8) {
+                    PlayerHUDView(
+                        imageName: viewModel.mode == .passAndPlay ? "portrait_player" : profileStore.avatarID,
+                        name: viewModel.displayName(for: viewModel.localPlayer),
+                        highlighted: viewModel.highlightedPlayer == viewModel.localPlayer
+                    )
+                    if showsQuickChat(viewModel) {
+                        Button {
+                            SoundService.shared.play(.tap)
+                            showChatSheet = true
+                        } label: {
+                            Label("Chat", systemImage: "bubble.left.fill")
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(.black.opacity(0.4), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             }
             .padding(.horizontal, 12)
 
-            // Dogbeard's bubble gets its own row under the HUD — over open water,
-            // never covering the portrait, Leave button, or status banner.
+            // Speech bubbles get their own row under the HUD — over open
+            // water, never covering the portraits, Leave, or status banner.
+            // Captain banter (AI) sits leading; online chat sits under its
+            // sender (rival leading, yours trailing).
             HStack {
                 if let line = viewModel.captainLine {
                     speechBubble(line)
                         .id(line) // new line = new view, so texts never crossfade into each other
                         .transition(.scale(scale: 0.6, anchor: .topLeading).combined(with: .opacity))
+                } else if let chat = viewModel.chatLine, !chat.mine {
+                    speechBubble(chat.text)
+                        .id(chat.text)
+                        .transition(.scale(scale: 0.6, anchor: .topLeading).combined(with: .opacity))
                 }
                 Spacer()
+                if let chat = viewModel.chatLine, chat.mine {
+                    speechBubble(chat.text, trailing: true)
+                        .id(chat.text)
+                        .transition(.scale(scale: 0.6, anchor: .topTrailing).combined(with: .opacity))
+                }
             }
             .padding(.horizontal, 14)
             .padding(.top, 2)
             .animation(.spring(duration: 0.3), value: viewModel.captainLine)
+            .animation(.spring(duration: 0.3), value: viewModel.chatLine)
 
             Spacer()
 
@@ -359,8 +393,63 @@ private struct MatchContentView: View {
         }
     }
 
-    /// Comic-style speech bubble anchored under Dogbeard's portrait.
-    private func speechBubble(_ line: String) -> some View {
+    /// Canned taunts only — 4+-safe, nothing to moderate. The pick shows on
+    /// your side immediately and sails to the rival with your next shot.
+    private var quickChatSheet: some View {
+        ZStack {
+            ScreenBackground(imageName: "tile_background")
+            VStack(spacing: 14) {
+                Text("Send a Message")
+                    .font(.system(size: 22, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Color(red: 0.12, green: 0.3, blue: 0.52))
+                    .shadow(color: .white.opacity(0.9), radius: 2)
+                    .padding(.top, 18)
+                Text("It sails over with yer next shot")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color(red: 0.2, green: 0.4, blue: 0.6))
+
+                ScrollView {
+                    VStack(spacing: 10) {
+                        ForEach(QuickChat.lines, id: \.self) { line in
+                            Button {
+                                SoundService.shared.play(.pop)
+                                viewModel?.sendTaunt(line)
+                                showChatSheet = false
+                            } label: {
+                                Text(line)
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.05))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 12)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(Color(red: 1, green: 0.96, blue: 0.85))
+                                            .strokeBorder(Color(red: 0.75, green: 0.55, blue: 0.2), lineWidth: 2)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 20)
+                }
+            }
+        }
+    }
+
+    /// Online matches (and staged frames) get the quick-chat button.
+    private func showsQuickChat(_ viewModel: MatchViewModel) -> Bool {
+        if case .gameCenter = viewModel.mode { return true }
+        #if DEBUG
+        if MatchViewModel.debugEnemyName != nil { return true }
+        #endif
+        return false
+    }
+
+    /// Comic-style speech bubble; tail points up toward the speaker's card
+    /// (leading for the rival/captain, trailing for your own chat).
+    private func speechBubble(_ line: String, trailing: Bool = false) -> some View {
         Text(line)
             .font(.system(size: 13, weight: .bold, design: .rounded))
             .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.05))
@@ -372,14 +461,14 @@ private struct MatchContentView: View {
                     .fill(Color(red: 1, green: 0.96, blue: 0.85))
                     .strokeBorder(Color(red: 0.75, green: 0.55, blue: 0.2), lineWidth: 2)
             )
-            .overlay(alignment: .topLeading) {
-                // Tail pointing up toward Dogbeard's card.
+            .overlay(alignment: trailing ? .topTrailing : .topLeading) {
+                // Tail pointing up toward the speaker's card.
                 Triangle()
                     .fill(Color(red: 1, green: 0.96, blue: 0.85))
                     .frame(width: 16, height: 9)
-                    .offset(x: 24, y: -8)
+                    .offset(x: trailing ? -24 : 24, y: -8)
             }
-            .accessibilityLabel("\(viewModel?.captain.name ?? "Captain") says: \(line)")
+            .accessibilityLabel(trailing ? "You say: \(line)" : "\(viewModel?.displayName(for: viewModel?.localPlayer.opponent ?? .two) ?? "Captain") says: \(line)")
     }
 
     private func leaveButton(_ viewModel: MatchViewModel) -> some View {
@@ -504,6 +593,7 @@ private struct MatchContentView: View {
                 var data = try await GameCenterController.loadGame(from: match)
                 let seatKey = seat == .one ? "0" : "1"
                 controller.noteAvatars(from: data)
+                controller.baselineTaunts(from: data)
                 if data.boards[seatKey] == nil, let board = config.playerBoard {
                     // Only the current participant may write match data. If the
                     // rival is still placing (simultaneous auto-match), park our

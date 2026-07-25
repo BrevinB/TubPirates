@@ -38,12 +38,36 @@ final class GameCenterController: OpponentController {
 
     private(set) var opponentAvatarID: String?
 
+    /// Fires when the rival's canned taunt arrives (validated against
+    /// QuickChat.lines before this is called).
+    var onTaunt: ((String) -> Void)?
+    /// Move-stamp of the last rival taunt we've surfaced (or baselined at
+    /// load, so stale taunts don't replay when reopening a match).
+    private var lastSeenTauntMove = -1
+
     /// Pulls the rival's avatar out of decoded match data.
     func noteAvatars(from data: OnlineMatchData) {
         let opponentKey = localPlayer == .one ? "1" : "0"
         if let avatar = data.avatars?[opponentKey] {
             opponentAvatarID = avatar
         }
+    }
+
+    /// Baselines taunt state at match load so only NEW taunts fire later.
+    func baselineTaunts(from data: OnlineMatchData) {
+        let opponentKey = localPlayer == .one ? "1" : "0"
+        lastSeenTauntMove = data.taunts?[opponentKey]?.atMove ?? -1
+    }
+
+    /// Surfaces a fresh, valid rival taunt exactly once.
+    private func noteTaunts(from data: OnlineMatchData) {
+        let opponentKey = localPlayer == .one ? "1" : "0"
+        guard let taunt = data.taunts?[opponentKey],
+              taunt.atMove > lastSeenTauntMove,
+              QuickChat.isValid(taunt.message)
+        else { return }
+        lastSeenTauntMove = taunt.atMove
+        onTaunt?(taunt.message)
     }
 
     init(match: GKTurnBasedMatch, localPlayer: PlayerID) {
@@ -90,10 +114,16 @@ final class GameCenterController: OpponentController {
 
     // MARK: - Turn submission
 
-    /// Sends the local player's applied move (and resulting state) to the opponent.
-    func submitLocalTurn(state: GameState) async throws {
+    /// Sends the local player's applied move (and resulting state) to the
+    /// opponent, with an optional canned taunt riding along.
+    func submitLocalTurn(state: GameState, taunt: String? = nil) async throws {
         var data = MatchDataCodec.decode(try await match.loadMatchData())
         data.state = state
+        if let taunt, QuickChat.isValid(taunt) {
+            var taunts = data.taunts ?? [:]
+            taunts[localPlayer == .one ? "0" : "1"] = Taunt(message: taunt, atMove: state.moveLog.count)
+            data.taunts = taunts
+        }
         markKnown(state: state)
 
         if case .finished(let winner) = state.phase {
@@ -161,6 +191,7 @@ final class GameCenterController: OpponentController {
 
         let data = MatchDataCodec.decode(updatedMatch.matchData)
         noteAvatars(from: data)
+        noteTaunts(from: data)
 
         // Deferred setup: we placed before the turn was ours; now that the
         // other captain has moved on, contribute our fleet.
