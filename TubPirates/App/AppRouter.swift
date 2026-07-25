@@ -5,6 +5,7 @@ enum Route: Hashable {
     case captains(MatchConfig)
     case placement(MatchConfig)
     case match(MatchConfig)
+    case harbor
     case armory
     case settings
 }
@@ -26,6 +27,8 @@ struct RootView: View {
                         PlacementView(config: config, path: $path)
                     case .match(let config):
                         MatchView(config: config, path: $path)
+                    case .harbor:
+                        OnlineHarborView(path: $path)
                     case .armory:
                         ArmoryView()
                     case .settings:
@@ -106,6 +109,7 @@ struct RootView: View {
                 case "battle": path = [.match(MatchConfig(mode: .ai, loadout: Set(ShotType.allCases)))]
                 case "tutorial": path = [.match(.tutorialBattle)]
                 case "captains": path = [.captains(MatchConfig(mode: .ai))]
+                case "harbor": path = [.harbor]
                 case "armory": path = [.armory]
                 case "settings": path = [.settings]
                 case "resume": path = [.match(MatchConfig(mode: .ai, resume: true))]

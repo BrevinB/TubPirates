@@ -16,6 +16,9 @@ final class GameCenterService: NSObject {
     private(set) var controllers: [String: GameCenterController] = [:]
     /// Set when a turn event arrives for a match the user isn't currently viewing.
     var pendingMatchID: String?
+    /// Bumped whenever Game Center reports match changes — the Harbor list
+    /// observes this to refresh.
+    private(set) var matchListVersion = 0
 
     func authenticate() {
         GKLocalPlayer.local.authenticateHandler = { [weak self] viewController, error in
@@ -60,6 +63,63 @@ final class GameCenterService: NSObject {
         return MatchDataCodec.player(forParticipantIndex: index)
     }
 
+    // MARK: - Harbor (custom online UI, no stock Game Center sheet)
+
+    /// All of the local player's turn-based matches, newest activity first.
+    func loadAllMatches() async -> [GKTurnBasedMatch] {
+        guard isAuthenticated else { return [] }
+        let matches = (try? await GKTurnBasedMatch.loadMatches()) ?? []
+        for match in matches {
+            register(match)
+        }
+        return matches
+    }
+
+    /// Programmatic auto-match: joins an open match or opens a fresh one that
+    /// fills when the next captain queues up.
+    func findMatch() async throws -> GKTurnBasedMatch {
+        let request = GKMatchRequest()
+        request.minPlayers = 2
+        request.maxPlayers = 2
+        let match = try await GKTurnBasedMatch.find(for: request)
+        register(match)
+        return match
+    }
+
+    /// Where opening this match should land: placement if our fleet isn't in
+    /// the match data yet, otherwise straight into the battle.
+    func destination(for match: GKTurnBasedMatch) async -> Route {
+        register(match)
+        let seat = localSeat(in: match)
+        _ = controller(for: match.matchID) ?? makeController(for: match, localPlayer: seat)
+        let data = (try? await GameCenterController.loadGame(from: match)) ?? OnlineMatchData()
+        let seatKey = seat == .one ? "0" : "1"
+        let config = MatchConfig(mode: .gameCenter(matchID: match.matchID), loadout: Set(ShotType.allCases))
+        return data.boards[seatKey] == nil ? .placement(config) : .match(config)
+    }
+
+    /// Resigns a match from the Harbor list ("Abandon Ship").
+    func forfeit(_ match: GKTurnBasedMatch) async {
+        let isOurTurn = match.currentParticipant?.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID
+        if isOurTurn {
+            let next = match.participants.filter {
+                $0.player?.gamePlayerID != GKLocalPlayer.local.gamePlayerID
+            }
+            try? await match.participantQuitInTurn(
+                with: .quit,
+                nextParticipants: next,
+                turnTimeout: GKTurnTimeoutDefault,
+                match: match.matchData ?? Data()
+            )
+        } else if match.status == .ended {
+            try? await match.remove()
+        } else {
+            try? await match.participantQuitOutOfTurn(with: .quit)
+        }
+        releaseController(for: match.matchID)
+        matchListVersion += 1
+    }
+
     private static func topViewController() -> UIViewController? {
         let scene = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
@@ -78,6 +138,7 @@ extension GameCenterService: GKLocalPlayerListener {
     nonisolated func player(_ player: GKPlayer, receivedTurnEventFor match: GKTurnBasedMatch, didBecomeActive: Bool) {
         Task { @MainActor in
             register(match)
+            matchListVersion += 1
             if let controller = controllers[match.matchID] {
                 controller.handleTurnEvent(match)
             } else if didBecomeActive {
@@ -90,6 +151,7 @@ extension GameCenterService: GKLocalPlayerListener {
     nonisolated func player(_ player: GKPlayer, matchEnded match: GKTurnBasedMatch) {
         Task { @MainActor in
             register(match)
+            matchListVersion += 1
             controllers[match.matchID]?.handleTurnEvent(match)
         }
     }
