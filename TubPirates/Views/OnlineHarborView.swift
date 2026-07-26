@@ -67,6 +67,7 @@ struct OnlineHarborView: View {
                 }
                 .padding()
                 .padding(.top, 24)
+                .contentColumn()
             }
         }
         .navigationTitle("")

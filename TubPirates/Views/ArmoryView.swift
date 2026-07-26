@@ -49,6 +49,7 @@ struct ArmoryView: View {
                     }
                 }
                 .padding()
+                .contentColumn()
             }
             .onAppear {
                 // Debug: land scrolled to the Shipyard (screenshot staging).

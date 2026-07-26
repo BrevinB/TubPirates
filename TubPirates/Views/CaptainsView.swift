@@ -31,6 +31,7 @@ struct CaptainsView: View {
                 }
                 .padding()
                 .padding(.top, 30)
+                .contentColumn()
             }
         }
         .navigationTitle("")

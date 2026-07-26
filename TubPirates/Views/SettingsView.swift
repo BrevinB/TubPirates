@@ -98,6 +98,7 @@ struct SettingsView: View {
                     }
                 }
                 .padding()
+                .contentColumn()
             }
         }
         .navigationTitle("")
