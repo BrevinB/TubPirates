@@ -53,6 +53,38 @@ final class GameCenterController: OpponentController {
         }
     }
 
+    /// Sends a canned taunt INSTANTLY via a turn-based exchange (out-of-band,
+    /// pushed to the rival immediately — no waiting for our next move).
+    func sendInstantTaunt(_ message: String) async {
+        guard QuickChat.isValid(message) else { return }
+        let others = match.participants.filter {
+            $0.player?.gamePlayerID != GKLocalPlayer.local.gamePlayerID
+        }
+        guard !others.isEmpty else { return }
+        // The "%@" message key makes the push notification show the taunt text.
+        try? await match.sendExchange(
+            to: others,
+            data: Data(message.utf8),
+            localizableMessageKey: "%@",
+            arguments: [message],
+            timeout: 60
+        )
+    }
+
+    /// A rival's exchange arrived: validate, surface, and reply to resolve it
+    /// (unresolved exchanges can block turn submission).
+    func handleExchange(_ exchange: GKTurnBasedExchange) {
+        if let data = exchange.data,
+           let message = String(data: data, encoding: .utf8),
+           QuickChat.isValid(message),
+           exchange.sender.player?.gamePlayerID != GKLocalPlayer.local.gamePlayerID {
+            onTaunt?(message)
+        }
+        Task {
+            try? await exchange.reply(withLocalizableMessageKey: "OK", arguments: [], data: Data())
+        }
+    }
+
     /// Baselines taunt state at match load so only NEW taunts fire later.
     func baselineTaunts(from data: OnlineMatchData) {
         let opponentKey = localPlayer == .one ? "1" : "0"
@@ -131,6 +163,7 @@ final class GameCenterController: OpponentController {
                 let seat = MatchDataCodec.player(forParticipantIndex: index)
                 participant.matchOutcome = seat == winner ? .won : .lost
             }
+            await settleExchanges(with: try MatchDataCodec.encode(data))
             try await match.endMatchInTurn(withMatch: MatchDataCodec.encode(data))
         } else {
             try await endTurn(with: data)
@@ -141,11 +174,35 @@ final class GameCenterController: OpponentController {
         let next = match.participants.filter {
             $0.player?.gamePlayerID != GKLocalPlayer.local.gamePlayerID
         }
-        try await match.endTurn(
-            withNextParticipants: next,
-            turnTimeout: GKTurnTimeoutDefault,
-            match: MatchDataCodec.encode(data)
-        )
+        let encoded = try MatchDataCodec.encode(data)
+        await settleExchanges(with: encoded)
+        do {
+            try await match.endTurn(
+                withNextParticipants: next,
+                turnTimeout: GKTurnTimeoutDefault,
+                match: encoded
+            )
+        } catch {
+            // A still-pending chat exchange (rival offline, not yet timed
+            // out) can block the turn — cancel ours and retry once.
+            for exchange in match.activeExchanges ?? []
+            where exchange.sender.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID {
+                try? await exchange.cancel(withLocalizableMessageKey: "chat", arguments: [])
+            }
+            try await match.endTurn(
+                withNextParticipants: next,
+                turnTimeout: GKTurnTimeoutDefault,
+                match: encoded
+            )
+        }
+    }
+
+    /// Game Center requires completed exchanges to be merged into match data
+    /// before the turn can end.
+    private func settleExchanges(with encoded: Data) async {
+        if let completed = match.completedExchanges, !completed.isEmpty {
+            try? await match.saveMergedMatch(encoded, withResolvedExchanges: completed)
+        }
     }
 
     // MARK: - OpponentController

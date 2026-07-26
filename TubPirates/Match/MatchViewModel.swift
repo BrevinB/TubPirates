@@ -103,8 +103,13 @@ final class MatchViewModel {
 
     func sendTaunt(_ line: String) {
         guard QuickChat.isValid(line) else { return }
-        pendingTaunt = line
         showChat(ChatLine(text: line, mine: true))
+        if let controller = opponent as? GameCenterController {
+            // Online: instant delivery via a turn-based exchange.
+            Task { await controller.sendInstantTaunt(line) }
+        } else {
+            pendingTaunt = line // staged/debug frames only
+        }
     }
 
     private func showChat(_ line: ChatLine) {

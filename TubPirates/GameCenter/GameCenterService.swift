@@ -156,6 +156,14 @@ extension GameCenterService: GKLocalPlayerListener {
         }
     }
 
+    /// Instant chat: a rival's canned-taunt exchange arrived.
+    nonisolated func player(_ player: GKPlayer, receivedExchangeRequest exchange: GKTurnBasedExchange, for match: GKTurnBasedMatch) {
+        Task { @MainActor in
+            register(match)
+            controllers[match.matchID]?.handleExchange(exchange)
+        }
+    }
+
     /// The user deleted/quit the match from Game Center's own UI — resign
     /// properly so the opponent is handed the win instead of a dead match.
     nonisolated func player(_ player: GKPlayer, wantsToQuitMatch match: GKTurnBasedMatch) {
