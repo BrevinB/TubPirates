@@ -1,0 +1,28 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "TAUNT_PUSH" : {
+      "comment" : "Push notification body for an incoming quick-chat taunt. %@ is the canned message.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "💬 %@"
+          }
+        }
+      }
+    },
+    "TAUNT_SEEN" : {
+      "comment" : "Benign text for exchange replies/cancellations (rarely user-visible).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Message delivered"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

@@ -61,11 +61,13 @@ final class GameCenterController: OpponentController {
             $0.player?.gamePlayerID != GKLocalPlayer.local.gamePlayerID
         }
         guard !others.isEmpty else { return }
-        // The "%@" message key makes the push notification show the taunt text.
+        // TAUNT_PUSH lives in Localizable.xcstrings — Game Center resolves the
+        // key in the RECEIVER's bundle; an unknown key falls back to the
+        // generic "An action was completed."
         try? await match.sendExchange(
             to: others,
             data: Data(message.utf8),
-            localizableMessageKey: "%@",
+            localizableMessageKey: "TAUNT_PUSH",
             arguments: [message],
             timeout: 60
         )
@@ -81,7 +83,7 @@ final class GameCenterController: OpponentController {
             onTaunt?(message)
         }
         Task {
-            try? await exchange.reply(withLocalizableMessageKey: "OK", arguments: [], data: Data())
+            try? await exchange.reply(withLocalizableMessageKey: "TAUNT_SEEN", arguments: [], data: Data())
         }
     }
 
@@ -187,7 +189,7 @@ final class GameCenterController: OpponentController {
             // out) can block the turn — cancel ours and retry once.
             for exchange in match.activeExchanges ?? []
             where exchange.sender.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID {
-                try? await exchange.cancel(withLocalizableMessageKey: "chat", arguments: [])
+                try? await exchange.cancel(withLocalizableMessageKey: "TAUNT_SEEN", arguments: [])
             }
             try await match.endTurn(
                 withNextParticipants: next,
