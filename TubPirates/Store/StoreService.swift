@@ -24,7 +24,6 @@ final class StoreService {
 
     /// RevenueCat public Apple API key (starts with `appl_`). Leave empty to
     /// disable the store entirely (development builds).
-    /// TODO: paste from RevenueCat dashboard → Project → API keys.
     static let apiKey = "appl_CehpLBBborFwXJaGdLRcqufLfqP"
 
     /// Product ID → doubloons granted. Must match the consumable IAPs in
@@ -45,7 +44,16 @@ final class StoreService {
     private(set) var isConfigured = false
     private(set) var packs: [CoinPack] = []
     private(set) var isLoading = false
-    private(set) var lastError: String?
+    /// The last offerings load failed — the shop shows a retry state instead
+    /// of pretending the store doesn't exist yet.
+    private(set) var loadFailed = false
+
+    /// How a purchase attempt ended. A cancel is silent; a failure is shown.
+    enum PurchaseOutcome {
+        case success(coins: Int)
+        case cancelled
+        case failed(message: String)
+    }
 
     private init() {}
 
@@ -77,23 +85,24 @@ final class StoreService {
                 )
             }
             .sorted { $0.coins < $1.coins }
-            lastError = nil
+            loadFailed = false
         } catch {
-            lastError = error.localizedDescription
+            loadFailed = true
         }
     }
 
-    /// Runs the purchase flow. Returns the doubloons to grant on success,
-    /// nil when cancelled or failed (lastError set on failure).
-    func purchase(_ pack: CoinPack) async -> Int? {
-        guard isConfigured else { return nil }
+    /// Runs the purchase flow. A user cancel and a real failure are distinct —
+    /// silently swallowing a failure reads as "I was charged and got nothing".
+    func purchase(_ pack: CoinPack) async -> PurchaseOutcome {
+        guard isConfigured else {
+            return .failed(message: "The store isn't available right now.")
+        }
         do {
             let result = try await Purchases.shared.purchase(package: pack.package)
-            guard !result.userCancelled else { return nil }
-            return pack.coins
+            guard !result.userCancelled else { return .cancelled }
+            return .success(coins: pack.coins)
         } catch {
-            lastError = error.localizedDescription
-            return nil
+            return .failed(message: error.localizedDescription)
         }
     }
 }

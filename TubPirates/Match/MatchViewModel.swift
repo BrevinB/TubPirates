@@ -8,6 +8,9 @@ import BathtubEngine
 /// Async methods complete when their animations finish — they gate the turn machine.
 @MainActor
 protocol BattleSceneRendering: AnyObject {
+    /// True once the scene is in a view and laid out — animations before this
+    /// would aim at unpositioned boards.
+    var isPresented: Bool { get }
     func playResolution(_ resolution: MoveResolution, onEnemyBoard: Bool) async
     func refreshBoards()
 }
@@ -19,6 +22,9 @@ final class MatchViewModel {
         case resolvingPlayerShot
         case opponentThinking
         case resolvingOpponentShot
+        /// Online: the move is applied and animated locally but Game Center
+        /// rejected/failed the send — parked until the player retries.
+        case submitFailed
         case awaitingHandoff(next: PlayerID)
         case finished(winner: PlayerID)
     }
@@ -43,7 +49,12 @@ final class MatchViewModel {
     private let consumesInventory: Bool
 
     /// Debug/demo: an AI plays the local side too (`-autoBattle` launch argument).
-    private let autoPlay = CommandLine.arguments.contains("-autoBattle")
+    #if DEBUG
+    private static let debugAutoBattle = CommandLine.arguments.contains("-autoBattle")
+    #else
+    private static let debugAutoBattle = false
+    #endif
+    private let autoPlay = MatchViewModel.debugAutoBattle
     private var playerAI = BattleAI()
 
     /// The rival captain's current speech-bubble line (AI matches only).
@@ -63,7 +74,7 @@ final class MatchViewModel {
     var highlightedPlayer: PlayerID? {
         switch turnState {
         case .finished, .awaitingHandoff: nil
-        case .playerTargeting, .resolvingPlayerShot: localPlayer
+        case .playerTargeting, .resolvingPlayerShot, .submitFailed: localPlayer
         case .opponentThinking, .resolvingOpponentShot: localPlayer.opponent
         }
     }
@@ -164,10 +175,11 @@ final class MatchViewModel {
         switch turnState {
         case .playerTargeting:
             mode == .passAndPlay ? "\(displayName(for: activePlayer)) — fire!" : "Your turn — fire!"
-        case .resolvingPlayerShot: "Firing..."
+        case .resolvingPlayerShot: isCatchingUp ? "While ye were away..." : "Firing..."
         case .opponentThinking:
             mode == .ai ? "\(captain.name) is aiming..." : "\(displayName(for: localPlayer.opponent)) is aiming..."
-        case .resolvingOpponentShot: "Incoming!"
+        case .resolvingOpponentShot: isCatchingUp ? "While ye were away..." : "Incoming!"
+        case .submitFailed: "Yer shot couldn't reach the rival!"
         case .awaitingHandoff: "Pass the tub..."
         case .finished(let winner):
             mode == .passAndPlay
@@ -280,7 +292,7 @@ final class MatchViewModel {
             ])
             opponent = AIOpponentController(
                 captain: captain,
-                thinkDelay: CommandLine.arguments.contains("-autoBattle") ? .milliseconds(80) : .milliseconds(900)
+                thinkDelay: Self.debugAutoBattle ? .milliseconds(80) : .milliseconds(900)
             )
         case .passAndPlay:
             // Both captains share the profile's unlocked arsenal — simple and fair.
@@ -351,20 +363,130 @@ final class MatchViewModel {
     }
 
     /// Online matches arrive with a server-synced state and an assigned seat.
-    init(gameCenterState: GameState, localPlayer: PlayerID, controller: GameCenterController) {
+    /// When `initialBoards` (the untouched placement fleets) are provided, the
+    /// state is rewound to just before any moves this device hasn't watched,
+    /// and those moves are replayed with full animation once the scene is up —
+    /// so a rival's overnight shot is seen landing, not found as a stale mark.
+    init(
+        gameCenterState: GameState,
+        localPlayer: PlayerID,
+        controller: GameCenterController,
+        initialBoards: [PlayerID: Board]? = nil
+    ) {
         consumesInventory = false
         isTutorial = false
         captain = .dogbeard // unused online; portraits come from Game Center identities
         mode = .gameCenter(matchID: controller.match.matchID)
         fixedLocalPlayer = localPlayer
-        state = gameCenterState
+        let replay = Self.catchUpReplay(
+            finalState: gameCenterState,
+            localPlayer: localPlayer,
+            initialBoards: initialBoards,
+            matchID: controller.match.matchID
+        )
+        state = replay.baseline
+        pendingReplayMoves = replay.moves
+        catchUpTargetState = gameCenterState
         opponent = controller
         controller.markKnown(state: gameCenterState)
-        arrivedFinished = state.phase != .active
+        arrivedFinished = gameCenterState.phase != .active
         onlineOpponentName = controller.opponentDisplayName
         onlineOpponentAvatarID = controller.opponentAvatarID
         controller.onTaunt = { [weak self] message in
             self?.showChat(ChatLine(text: message, mine: false))
+        }
+    }
+
+    // MARK: - Catch-up replay (online)
+
+    /// Moves this device hasn't watched yet, animated when the match screen opens.
+    private var pendingReplayMoves: [Move] = []
+    /// The server-synced state the replay must land on (desync escape hatch).
+    private var catchUpTargetState: GameState?
+    /// True while the away-recap volley plays (drives the status banner).
+    private(set) var isCatchingUp = false
+
+    /// Bounds the recap when the seen record is stale (e.g. a device switch);
+    /// alternating turns mean a fresh record only ever trails by one move.
+    private static let maxReplayMoves = 6
+
+    /// Rewinds to the last state this device watched by replaying the shared
+    /// move log from the initial placement boards (`apply` is deterministic,
+    /// so the rebuilt states match the server's exactly). Returns the final
+    /// state untouched whenever a rewind isn't possible or needed.
+    private static func catchUpReplay(
+        finalState: GameState,
+        localPlayer: PlayerID,
+        initialBoards: [PlayerID: Board]?,
+        matchID: String
+    ) -> (baseline: GameState, moves: [Move]) {
+        let log = finalState.moveLog
+        guard let boards = initialBoards, boards[.one] != nil, boards[.two] != nil else {
+            return (finalState, [])
+        }
+        // First unwatched move: the recorded count when available, otherwise
+        // the rival's trailing run (their moves since our last shot).
+        var firstUnseen: Int
+        if let seen = SeenMovesStore.seenCount(for: matchID) {
+            firstUnseen = min(seen, log.count)
+        } else {
+            firstUnseen = log.count
+            while firstUnseen > 0, log[firstUnseen - 1].player != localPlayer {
+                firstUnseen -= 1
+            }
+        }
+        firstUnseen = max(firstUnseen, log.count - maxReplayMoves)
+        guard firstUnseen < log.count else { return (finalState, []) }
+
+        // Everyone gets the full arsenal online (mirrors submitSetup).
+        let arsenal = Set(ShotType.allCases)
+        var baseline = GameState(boards: boards, loadouts: [.one: arsenal, .two: arsenal])
+        for move in log.prefix(firstUnseen) {
+            guard (try? baseline.apply(move)) != nil else { return (finalState, []) }
+        }
+        return (baseline, Array(log.suffix(from: firstUnseen)))
+    }
+
+    private func playCatchUpReplay() async {
+        let moves = pendingReplayMoves
+        pendingReplayMoves = []
+        // Wait out scene presentation, then a beat so the player reorients
+        // before the volley lands.
+        var waited = 0
+        while renderer?.isPresented != true, waited < 40 {
+            try? await Task.sleep(for: .milliseconds(50))
+            waited += 1
+        }
+        try? await Task.sleep(for: .milliseconds(450))
+
+        for move in moves {
+            guard !isAbandoned else { return }
+            guard let resolution = try? state.apply(move) else {
+                // Deterministic replay shouldn't diverge; if it ever does,
+                // snap to the server-synced state rather than desync.
+                if let target = catchUpTargetState { state = target }
+                renderer?.refreshBoards()
+                break
+            }
+            let mine = move.player == localPlayer
+            turnState = mine ? .resolvingPlayerShot : .resolvingOpponentShot
+            await renderer?.playResolution(resolution, onEnemyBoard: mine)
+            playHaptics(for: resolution)
+        }
+        isCatchingUp = false
+        if case .gameCenter(let matchID) = mode {
+            SeenMovesStore.record(state.moveLog.count, for: matchID)
+        }
+
+        if case .finished(let winner) = state.phase {
+            turnState = .finished(winner: winner)
+            return
+        }
+        if state.currentPlayer == localPlayer {
+            turnState = .playerTargeting
+            schedulePlayerAutoMoveIfNeeded()
+        } else {
+            await awaitOpponentMove()
         }
     }
 
@@ -389,6 +511,17 @@ final class MatchViewModel {
                 turnState = .awaitingHandoff(next: state.currentPlayer)
             }
         case .ai, .gameCenter:
+            if !pendingReplayMoves.isEmpty {
+                // Lock input and replay the rival's unseen shot(s) first.
+                isCatchingUp = true
+                turnState = .resolvingOpponentShot
+                Task { await playCatchUpReplay() }
+                return
+            }
+            if case .gameCenter(let matchID) = mode {
+                // Nothing to recap — baseline the watched count for next time.
+                SeenMovesStore.record(state.moveLog.count, for: matchID)
+            }
             // Rejoining on the opponent's turn: start listening/thinking.
             if state.currentPlayer != localPlayer, state.phase == .active {
                 Task { await awaitOpponentMove() }
@@ -520,15 +653,61 @@ final class MatchViewModel {
         playHaptics(for: resolution)
         reactToResolution(resolution)
 
-        // Online: our own applied move must reach Game Center before anything else
-        // (submitLocalTurn also ends the match when this move won it).
-        if case .gameCenter = mode, move.player == localPlayer,
-           let controller = opponent as? GameCenterController {
-            try? await controller.submitLocalTurn(state: state, taunt: pendingTaunt)
-            pendingTaunt = nil
+        // Online: our own applied move must reach Game Center before anything
+        // else (submitLocalTurn also ends the match when this move won it).
+        // A failed send parks the turn for an explicit retry — advancing (or
+        // paying out a win) on an unsent move desyncs us from the server and
+        // makes the reward repeatable.
+        if case .gameCenter = mode, move.player == localPlayer {
+            guard await submitTurnToGameCenter() else {
+                pendingSubmitResolution = resolution
+                turnState = .submitFailed
+                return
+            }
         }
 
+        await advanceAfterResolution(resolution)
+    }
+
+    /// The resolution whose Game Center submit failed, held for retry.
+    private var pendingSubmitResolution: MoveResolution?
+
+    /// Sends the applied local move to Game Center. Returns false on failure.
+    private func submitTurnToGameCenter() async -> Bool {
+        guard let controller = opponent as? GameCenterController else { return true }
+        do {
+            try await controller.submitLocalTurn(state: state, taunt: pendingTaunt)
+            pendingTaunt = nil
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    /// Retry a send that failed (the "no wind in the sails" banner's button).
+    func retrySubmit() {
+        guard turnState == .submitFailed, let resolution = pendingSubmitResolution else { return }
+        turnState = .resolvingPlayerShot
+        Task {
+            guard await submitTurnToGameCenter() else {
+                turnState = .submitFailed
+                return
+            }
+            pendingSubmitResolution = nil
+            await advanceAfterResolution(resolution)
+        }
+    }
+
+    /// Everything that happens after a resolved move is safely persisted:
+    /// bookkeeping, then the turn handoff.
+    private func advanceAfterResolution(_ resolution: MoveResolution) async {
         saveIfNeeded()
+        // This device just WATCHED the move land — don't recap it later. An
+        // abandoned/detached view model doesn't count as watching (the scene
+        // is gone), or the catch-up replay would skip a shot nobody saw.
+        if case .gameCenter(let matchID) = mode, !isAbandoned, renderer?.isPresented == true {
+            SeenMovesStore.record(state.moveLog.count, for: matchID)
+        }
 
         if let winner = resolution.winner {
             turnState = .finished(winner: winner)
@@ -617,13 +796,10 @@ final class MatchViewModel {
     }
 
     private func playHaptics(for resolution: MoveResolution) {
-        let defaults = UserDefaults.standard
-        let enabled = defaults.object(forKey: "hapticsEnabled") == nil || defaults.bool(forKey: "hapticsEnabled")
-        guard enabled else { return }
         if !resolution.sunkShips.isEmpty {
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            Haptics.notify(.success)
         } else if resolution.cellResults.contains(where: { $0.outcome == .hit }) {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            Haptics.impact(.medium)
         }
     }
 

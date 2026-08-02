@@ -10,9 +10,15 @@ struct MainMenuView: View {
     @State private var claimedChestAmount: Int?
     @State private var showDoubloonShop = false
     @State private var showGameCenterDashboard = false
+    /// The one-time post-tutorial "pick yer captain" framing of the picker.
+    @State private var avatarPickerIsOnboarding = false
 
     private var debugAllShots: Bool {
+        #if DEBUG
         UserDefaults.standard.bool(forKey: "debugAllShots")
+        #else
+        false // never honor the cheat key in a shipping build
+        #endif
     }
 
     /// Debug builds can force-arm every cannon from Settings (no consumption).
@@ -119,15 +125,29 @@ struct MainMenuView: View {
         .toolbarVisibility(.hidden, for: .navigationBar)
         .onAppear {
             hasSavedMatch = MatchSaveStore.hasSave
+            // Fresh from the tutorial, prize purse in hand: offer the captain
+            // portrait once — the first taste of spending doubloons.
+            if profileStore.hasSeenBattleTips, !profileStore.hasPickedCaptain {
+                avatarPickerIsOnboarding = true
+                showAvatarPicker = true
+            }
+            #if DEBUG
             if CommandLine.arguments.contains("-showAvatars") {
                 showAvatarPicker = true
             }
             if CommandLine.arguments.contains("-showShop") {
                 showDoubloonShop = true
             }
+            #endif
         }
-        .sheet(isPresented: $showAvatarPicker) {
-            AvatarPickerView()
+        .sheet(isPresented: $showAvatarPicker, onDismiss: {
+            // Offered exactly once — keeping the default duck is a choice too.
+            if avatarPickerIsOnboarding {
+                profileStore.markCaptainPicked()
+                avatarPickerIsOnboarding = false
+            }
+        }) {
+            AvatarPickerView(isOnboarding: avatarPickerIsOnboarding)
         }
         .sheet(isPresented: $showDoubloonShop) {
             DoubloonShopView()

@@ -86,7 +86,6 @@ struct ShotPanelView: View {
 
     private func shotButton(_ shot: ShotType, remaining: Int?) -> some View {
         let spent = (remaining ?? 1) <= 0
-        let selected = viewModel.selectedShot == shot && !shot.spec.needsTarget == false
 
         return Button {
             if spent {

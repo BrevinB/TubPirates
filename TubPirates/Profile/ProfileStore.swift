@@ -80,6 +80,7 @@ final class ProfileStore {
         save()
     }
 
+    #if DEBUG
     /// Debug launch arg: grant + equip without cost.
     func debugGrantFleet(_ fleet: FleetSkin) {
         profile.ownedFleets.insert(fleet.id)
@@ -117,6 +118,7 @@ final class ProfileStore {
         profile.ownedFleets = Set(FleetSkin.all.map(\.id))
         save()
     }
+    #endif
 
     /// Grants any trophy cosmetics whose criteria are now met. Idempotent;
     /// called after results are recorded and at load.
@@ -187,6 +189,7 @@ final class ProfileStore {
 
     var hasSeenWelcome: Bool { profile.hasSeenWelcome }
     var hasSeenBattleTips: Bool { profile.hasSeenBattleTips }
+    var hasPickedCaptain: Bool { profile.hasPickedCaptain }
 
     func markWelcomeSeen() {
         profile.hasSeenWelcome = true
@@ -198,10 +201,17 @@ final class ProfileStore {
         save()
     }
 
-    /// Settings: replay the welcome + first-battle tips.
+    func markCaptainPicked() {
+        profile.hasPickedCaptain = true
+        save()
+    }
+
+    /// Settings: replay the welcome + first-battle tips (and the
+    /// pick-yer-captain moment that follows them).
     func resetOnboarding() {
         profile.hasSeenWelcome = false
         profile.hasSeenBattleTips = false
+        profile.hasPickedCaptain = false
         save()
     }
 

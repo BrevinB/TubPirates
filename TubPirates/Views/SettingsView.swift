@@ -3,12 +3,26 @@ import SwiftUI
 struct SettingsView: View {
     @Binding var path: [Route]
     @Environment(ProfileStore.self) private var profileStore
+    @Environment(\.openURL) private var openURL
     @AppStorage("hapticsEnabled") private var hapticsEnabled = true
     @AppStorage("soundEnabled") private var soundEnabled = true
     @AppStorage("musicEnabled") private var musicEnabled = true
     @AppStorage("debugAllShots") private var debugAllShots = false
     @AppStorage("analyticsEnabled") private var analyticsEnabled = true
     @State private var confirmReset = false
+    @State private var showShop = false
+
+    /// Where "Contact the Captain" lands.
+    private static let supportEmail = "brevbot2@gmail.com"
+    /// Hosted from this repo's docs/ folder via GitHub Pages. App Store
+    /// Connect needs the same URL on the listing.
+    private static let privacyPolicyURL: URL? = URL(string: "https://brevinb.github.io/TubPirates/privacy.html")
+
+    private var appVersion: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        return "\(version) (\(build))"
+    }
 
     private let ink = Color(red: 0.12, green: 0.3, blue: 0.52)
     private let inkSoft = Color(red: 0.25, green: 0.4, blue: 0.55)
@@ -84,6 +98,30 @@ struct SettingsView: View {
                         .padding(.vertical, 10)
                     }
 
+                    card("The Merchant", icon: "cart.fill") {
+                        buttonRow("Doubloon Shop", icon: "circle.grid.2x1.fill") {
+                            showShop = true
+                        }
+                        footnote("Top up yer doubloons with real-world treasure.")
+                    }
+
+                    card("About", icon: "info.circle.fill") {
+                        valueRow("Version", icon: "number", value: appVersion)
+                        divider
+                        buttonRow("Contact the Captain", icon: "envelope.fill") {
+                            if let url = URL(string: "mailto:\(Self.supportEmail)?subject=Tub%20Pirates%20Support") {
+                                openURL(url)
+                            }
+                        }
+                        if let policyURL = Self.privacyPolicyURL {
+                            divider
+                            buttonRow("Privacy Policy", icon: "hand.raised.fill") {
+                                openURL(policyURL)
+                            }
+                        }
+                        footnote("Trouble aboard? Send a message and include yer app version.")
+                    }
+
                     card("The Ship's Log", icon: "book.fill") {
                         buttonRow("Replay Tutorial", icon: "arrow.counterclockwise") {
                             profileStore.resetOnboarding()
@@ -103,6 +141,9 @@ struct SettingsView: View {
         }
         .navigationTitle("")
         .toolbarBackground(.hidden, for: .navigationBar)
+        .sheet(isPresented: $showShop) {
+            DoubloonShopView()
+        }
         .confirmationDialog(
             "Reset your profile?",
             isPresented: $confirmReset,

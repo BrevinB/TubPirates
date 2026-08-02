@@ -2,10 +2,15 @@ import SwiftUI
 
 /// Sheet for choosing the captain's portrait.
 struct AvatarPickerView: View {
+    /// Post-tutorial framing: celebrate the fresh doubloons and hint that
+    /// they're spendable (here and in the Armory).
+    var isOnboarding = false
+
     @Environment(ProfileStore.self) private var profileStore
     @Environment(\.dismiss) private var dismiss
     @State private var pendingPurchase: Avatar?
     @State private var trophyMessage: String?
+    @State private var showShop = false
 
     private let columns = [GridItem(.adaptive(minimum: 100), spacing: 16)]
 
@@ -19,11 +24,17 @@ struct AvatarPickerView: View {
 
                 ScrollView {
                     HStack {
-                        DoubloonLabel(amount: profileStore.coins, fontSize: 15)
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(.black.opacity(0.35), in: Capsule())
+                        Button {
+                            SoundService.shared.play(.tap)
+                            showShop = true
+                        } label: {
+                            DoubloonLabel(amount: profileStore.coins, fontSize: 15)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(.black.opacity(0.35), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
                         Spacer()
                     }
                     .padding(.horizontal)
@@ -32,6 +43,13 @@ struct AvatarPickerView: View {
                         .foregroundStyle(Color(red: 0.12, green: 0.3, blue: 0.52))
                         .shadow(color: .white.opacity(0.9), radius: 2)
                         .padding(.top, 2)
+                    if isOnboarding {
+                        Text("Ye've earned yer first doubloons, captain! Spend 'em on a new face — or save 'em for cannons in the Armory.")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Color(red: 0.2, green: 0.4, blue: 0.6))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 28)
+                    }
                     LazyVGrid(columns: columns, spacing: 18) {
                         ForEach(Avatar.all) { avatar in
                             avatarCell(avatar)
@@ -47,6 +65,9 @@ struct AvatarPickerView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .sheet(isPresented: $showShop) {
+                DoubloonShopView()
             }
             .alert(
                 trophyMessage ?? "",

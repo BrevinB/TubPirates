@@ -62,7 +62,11 @@ struct MatchEndView: View {
                     .opacity(0.4)
             }
 
-            VStack(spacing: 28) {
+            // Scrolls when the content outgrows the screen (a big win can
+            // stack several unlock banners); centers itself when it doesn't.
+            GeometryReader { geo in
+                ScrollView {
+                    VStack(spacing: 28) {
                 Spacer()
 
                 // The gloat-and-sulk duo: victor front and center, loser
@@ -230,8 +234,13 @@ struct MatchEndView: View {
                 }
 
                 Spacer()
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: geo.size.height)
+                }
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .padding()
         }
         .task {
             SoundService.shared.play(didWin ? .victory : .defeat)

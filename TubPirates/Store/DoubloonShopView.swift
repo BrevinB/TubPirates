@@ -8,6 +8,7 @@ struct DoubloonShopView: View {
     @State private var store = StoreService.shared
     @State private var purchasing: String?
     @State private var celebrationAmount: Int?
+    @State private var purchaseError: String?
 
     var body: some View {
         NavigationStack {
@@ -62,6 +63,10 @@ struct DoubloonShopView: View {
                         } else if store.isConfigured, store.isLoading {
                             ProgressView()
                                 .padding(.top, 30)
+                        } else if store.isConfigured {
+                            // Configured but nothing loaded: a network problem,
+                            // not a "coming soon" — offer a retry.
+                            merchantUnreachable
                         } else {
                             closedShop
                         }
@@ -72,10 +77,24 @@ struct DoubloonShopView: View {
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
+            // A load that failed before the shop was opened gets another go.
+            .task {
+                if store.isConfigured, store.packs.isEmpty, !store.isLoading {
+                    await store.loadOfferings()
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .alert("The purchase didn't go through", isPresented: Binding(
+                get: { purchaseError != nil },
+                set: { if !$0 { purchaseError = nil } }
+            )) {
+                Button("OK") { purchaseError = nil }
+            } message: {
+                Text(purchaseError ?? "")
             }
         }
     }
@@ -97,17 +116,50 @@ struct DoubloonShopView: View {
         .padding(.top, 20)
     }
 
+    /// Offerings couldn't load (flaky connection, store outage): say so and
+    /// let the user retry — the sleeping-merchant copy would be a lie here.
+    private var merchantUnreachable: some View {
+        VStack(spacing: 10) {
+            Text("🌊")
+                .font(.system(size: 44))
+            Text("The merchant be unreachable!")
+                .font(.system(size: 18, weight: .heavy, design: .rounded))
+                .foregroundStyle(Color(red: 0.12, green: 0.3, blue: 0.52))
+            Text("The doubloon packs couldn't be loaded. Check yer connection and try again.")
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(Color(red: 0.25, green: 0.4, blue: 0.5))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 30)
+            Button {
+                Task { await store.loadOfferings() }
+            } label: {
+                Label("Try Again", systemImage: "arrow.clockwise")
+                    .font(.headline.weight(.bold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.orange)
+        }
+        .padding(.top, 20)
+    }
+
     private func packCard(_ pack: CoinPack) -> some View {
         Button {
             guard purchasing == nil else { return }
             purchasing = pack.id
             Task {
-                if let coins = await StoreService.shared.purchase(pack) {
+                switch await StoreService.shared.purchase(pack) {
+                case .success(let coins):
                     profileStore.award(coins: coins)
                     SoundService.shared.play(.chest)
                     withAnimation(.spring(duration: 0.4)) {
                         celebrationAmount = coins
                     }
+                case .cancelled:
+                    break
+                case .failed(let message):
+                    purchaseError = message
                 }
                 purchasing = nil
             }

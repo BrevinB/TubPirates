@@ -1,4 +1,5 @@
 import GameKit
+import OSLog
 import SwiftUI
 import BathtubEngine
 
@@ -61,7 +62,8 @@ enum AchievementReporter {
 
         GKAchievement.report(achievements) { error in
             if let error {
-                print("Achievement report: \(error.localizedDescription)")
+                Logger(subsystem: "co.brevinb.TubPirates", category: "GameCenter")
+                    .error("Achievement report failed: \(error.localizedDescription, privacy: .public)")
             }
         }
 

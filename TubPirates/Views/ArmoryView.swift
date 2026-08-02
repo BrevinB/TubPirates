@@ -6,6 +6,7 @@ import BathtubEngine
 struct ArmoryView: View {
     @Environment(ProfileStore.self) private var profileStore
     @State private var pendingFleet: FleetSkin?
+    @State private var showShop = false
 
     private static let iconNames: [ShotType: String] = [
         .parrotScout: "icon_parrot", .bigShot: "icon_bigshot",
@@ -52,10 +53,12 @@ struct ArmoryView: View {
                 .contentColumn()
             }
             .onAppear {
+                #if DEBUG
                 // Debug: land scrolled to the Shipyard (screenshot staging).
                 if CommandLine.arguments.contains("-shipyard") {
                     proxy.scrollTo("shipyard", anchor: .top)
                 }
+                #endif
             }
             }
         }
@@ -87,8 +90,19 @@ struct ArmoryView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                DoubloonLabel(amount: profileStore.coins, fontSize: 16)
+                // The coin chip opens the shop everywhere it's shown — this
+                // is THE spending screen, where a short purse matters most.
+                Button {
+                    SoundService.shared.play(.tap)
+                    showShop = true
+                } label: {
+                    DoubloonLabel(amount: profileStore.coins, fontSize: 16)
+                }
+                .buttonStyle(.plain)
             }
+        }
+        .sheet(isPresented: $showShop) {
+            DoubloonShopView()
         }
     }
 

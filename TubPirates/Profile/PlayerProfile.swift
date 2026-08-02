@@ -29,6 +29,9 @@ struct PlayerProfile: Codable, Equatable {
     var hasSeenWelcome: Bool = false
     /// First-battle coach marks have been shown.
     var hasSeenBattleTips: Bool = false
+    /// The post-tutorial captain-portrait pick has been offered — the first
+    /// taste of spending doubloons.
+    var hasPickedCaptain: Bool = false
 
     /// A few free uses so new captains learn how special shots work:
     /// intel (Parrot Scout) and damage (Big Shot Cannon).
@@ -60,6 +63,7 @@ struct PlayerProfile: Codable, Equatable {
         let isVeteran = wins + losses > 0
         hasSeenWelcome = try container.decodeIfPresent(Bool.self, forKey: .hasSeenWelcome) ?? isVeteran
         hasSeenBattleTips = try container.decodeIfPresent(Bool.self, forKey: .hasSeenBattleTips) ?? isVeteran
+        hasPickedCaptain = try container.decodeIfPresent(Bool.self, forKey: .hasPickedCaptain) ?? isVeteran
 
         if let inventory = try container.decodeIfPresent([ShotType: Int].self, forKey: .shotInventory) {
             shotInventory = inventory

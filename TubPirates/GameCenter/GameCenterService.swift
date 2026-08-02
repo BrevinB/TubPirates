@@ -1,7 +1,12 @@
 import GameKit
 import Observation
+import OSLog
 import SwiftUI
 import BathtubEngine
+
+/// Shared diagnostics channel for Game Center plumbing (visible in Console
+/// during support triage; `print` vanishes in release).
+let gameCenterLog = Logger(subsystem: "co.brevinb.TubPirates", category: "GameCenter")
 
 /// Game Center glue: authentication, the matchmaker sheet, and routing of
 /// turn events to the per-match controller.
@@ -16,6 +21,10 @@ final class GameCenterService: NSObject {
     private(set) var controllers: [String: GameCenterController] = [:]
     /// Set when a turn event arrives for a match the user isn't currently viewing.
     var pendingMatchID: String?
+    /// The match currently on the match screen (nil when none is).
+    /// Turn events for it animate in place; events for any OTHER match may
+    /// navigate — even when a stale controller for it still exists.
+    var activeMatchID: String?
     /// Bumped whenever Game Center reports match changes — the Harbor list
     /// observes this to refresh.
     private(set) var matchListVersion = 0
@@ -32,7 +41,7 @@ final class GameCenterService: NSObject {
                 GKLocalPlayer.local.register(self)
             }
             if let error {
-                print("Game Center auth: \(error.localizedDescription)")
+                gameCenterLog.error("Auth failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
@@ -66,12 +75,16 @@ final class GameCenterService: NSObject {
     // MARK: - Harbor (custom online UI, no stock Game Center sheet)
 
     /// All of the local player's turn-based matches, newest activity first.
-    func loadAllMatches() async -> [GKTurnBasedMatch] {
-        guard isAuthenticated else { return [] }
-        let matches = (try? await GKTurnBasedMatch.loadMatches()) ?? []
+    /// nil means the load failed (offline) — callers keep what they have.
+    func loadAllMatches() async -> [GKTurnBasedMatch]? {
+        guard isAuthenticated else { return nil }
+        guard let matches = try? await GKTurnBasedMatch.loadMatches() else { return nil }
         for match in matches {
             register(match)
         }
+        // A successful load is the full truth — drop watched-move records
+        // for matches that no longer exist.
+        SeenMovesStore.prune(keeping: matches.map(\.matchID))
         return matches
     }
 
@@ -92,9 +105,14 @@ final class GameCenterService: NSObject {
         register(match)
         let seat = localSeat(in: match)
         _ = controller(for: match.matchID) ?? makeController(for: match, localPlayer: seat)
-        let data = (try? await GameCenterController.loadGame(from: match)) ?? OnlineMatchData()
-        let seatKey = seat == .one ? "0" : "1"
         let config = MatchConfig(mode: .gameCenter(matchID: match.matchID), loadout: Set(ShotType.allCases))
+        guard let data = try? await GameCenterController.loadGame(from: match) else {
+            // Load failed or the payload is unreadable: NEVER route to
+            // placement (re-placing overwrites a live match) — the match
+            // screen surfaces the failure and bails safely.
+            return .match(config)
+        }
+        let seatKey = seat == .one ? "0" : "1"
         return data.boards[seatKey] == nil ? .placement(config) : .match(config)
     }
 
@@ -139,10 +157,11 @@ extension GameCenterService: GKLocalPlayerListener {
         Task { @MainActor in
             register(match)
             matchListVersion += 1
-            if let controller = controllers[match.matchID] {
-                controller.handleTurnEvent(match)
-            } else if didBecomeActive {
-                // User tapped a Game Center notification — surface the match.
+            controllers[match.matchID]?.handleTurnEvent(match)
+            // User tapped a Game Center notification for a match that isn't
+            // on screen — surface it. (A lingering controller, e.g. one
+            // holding a parked setup, must not swallow the navigation.)
+            if didBecomeActive, activeMatchID != match.matchID {
                 pendingMatchID = match.matchID
             }
         }
@@ -235,7 +254,7 @@ struct MatchmakerSheet: UIViewControllerRepresentable {
             _ viewController: GKTurnBasedMatchmakerViewController,
             didFailWithError error: Error
         ) {
-            print("Matchmaker error: \(error.localizedDescription)")
+            gameCenterLog.error("Matchmaker failed: \(error.localizedDescription, privacy: .public)")
             viewController.dismiss(animated: true)
             onCancel()
         }

@@ -54,11 +54,15 @@ struct PlacementView: View {
             ScreenBackground(imageName: "placement_background")
                 .onAppear {
                     guard board.ships.isEmpty else { return }
+                    #if DEBUG
                     // Debug: pre-place a random fleet for screenshots.
                     if CommandLine.arguments.contains("-randomize") {
                         var rng = SystemRandomNumberGenerator()
                         board = Board.randomlyPlaced(using: &rng)
-                    } else if let previous = config.playerBoard {
+                        return
+                    }
+                    #endif
+                    if let previous = config.playerBoard {
                         // Rematch: start from last game's layout — one tap to
                         // re-battle, or drag to reposition.
                         board = previous
@@ -82,7 +86,7 @@ struct PlacementView: View {
                     Button {
                         var rng = SystemRandomNumberGenerator()
                         board = Board.randomlyPlaced(using: &rng)
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        Haptics.impact(.medium)
                     } label: {
                         Label("Randomize", systemImage: "dice.fill")
                             .font(.headline)
@@ -279,9 +283,9 @@ struct PlacementView: View {
         if copy.canPlace(ship.kind, at: origin, orientation: rotated) {
             try? copy.place(ship.kind, at: origin, orientation: rotated)
             board = copy
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            Haptics.impact(.light)
         } else {
-            UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            Haptics.notify(.warning)
         }
     }
 
@@ -293,7 +297,7 @@ struct PlacementView: View {
         if let cellSize, let target = dropTarget(for: kind, cellSize: cellSize) {
             if target.cell != lastTickedOrigin {
                 lastTickedOrigin = target.cell
-                UIImpactFeedbackGenerator(style: .light).impactOccurred(intensity: 0.6)
+                Haptics.impact(.light, intensity: 0.6)
             }
         } else {
             lastTickedOrigin = nil
@@ -315,15 +319,15 @@ struct PlacementView: View {
             if copy.canPlace(kind, at: target.cell, orientation: target.orientation) {
                 try? copy.place(kind, at: target.cell, orientation: target.orientation)
                 board = copy
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                Haptics.notify(.success)
             } else if liftedShip != nil {
                 // Invalid spot for a board ship: keep its original placement.
-                UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                Haptics.notify(.warning)
             }
         } else if liftedShip != nil {
             // Dragged clear off the board: back to the shelf.
             board = copy
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            Haptics.impact(.medium)
         }
     }
 

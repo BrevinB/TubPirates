@@ -64,60 +64,74 @@ struct RootView: View {
             Analytics.start()
             StoreService.shared.configureIfPossible()
             gameCenter.authenticate()
-            let args = CommandLine.arguments
-            // -welcome forces the story for testing; otherwise first launch only.
-            // Debug deep links (-autoBattle / -screen) suppress it so headless
-            // runs land where they aimed.
-            let debugLaunch = args.contains("-autoBattle") || args.contains("-screen") || args.contains("-noWelcome")
-            if args.contains("-welcome") || (!profileStore.hasSeenWelcome && !debugLaunch) {
+            #if DEBUG
+            handleDebugLaunchArguments()
+            #else
+            if !profileStore.hasSeenWelcome {
                 showWelcome = true
             }
-            // Debug: -avatar <assetID> pre-selects a captain portrait for testing.
-            if let index = args.firstIndex(of: "-avatar"), index + 1 < args.count {
-                profileStore.setAvatar(args[index + 1])
+            #endif
+        }
+    }
+
+    #if DEBUG
+    /// Launch-argument staging for tests and screenshot runs. DEBUG-only:
+    /// none of this cheat scaffolding belongs in a shipping binary.
+    private func handleDebugLaunchArguments() {
+        let args = CommandLine.arguments
+        // -welcome forces the story for testing; otherwise first launch only.
+        // Debug deep links (-autoBattle / -screen) suppress it so headless
+        // runs land where they aimed.
+        let debugLaunch = args.contains("-autoBattle") || args.contains("-screen") || args.contains("-noWelcome")
+        if args.contains("-welcome") || (!profileStore.hasSeenWelcome && !debugLaunch) {
+            showWelcome = true
+        }
+        // Debug: -avatar <assetID> pre-selects a captain portrait for testing.
+        if let index = args.firstIndex(of: "-avatar"), index + 1 < args.count {
+            profileStore.setAvatar(args[index + 1])
+        }
+        // Debug: -fleet <id> grants and equips a fleet skin for testing.
+        if let index = args.firstIndex(of: "-fleet"), index + 1 < args.count {
+            profileStore.debugGrantFleet(FleetSkin.withID(args[index + 1]))
+        }
+        // Debug: -champion clears the whole ladder.
+        if args.contains("-champion") {
+            profileStore.debugConquerLadder()
+        }
+        // Debug: -wins dogbeard=3,soapySal=2 stages exact ladder progress.
+        if let index = args.firstIndex(of: "-wins"), index + 1 < args.count {
+            profileStore.debugSetWins(args[index + 1])
+        }
+        if args.contains("-autoBattle") {
+            let mode: MatchConfig.Mode = args.contains("-pnp") ? .passAndPlay : .ai
+            // -consume: use the real stash + consumable accounting (for testing).
+            let consume = args.contains("-consume")
+            var config = MatchConfig(
+                mode: mode,
+                loadout: consume ? profileStore.loadoutShots : Set(ShotType.allCases),
+                consumesInventory: consume
+            )
+            // -captain <id>: fight a specific ladder rival.
+            if let index = args.firstIndex(of: "-captain"), index + 1 < args.count {
+                config.captainID = args[index + 1]
             }
-            // Debug: -fleet <id> grants and equips a fleet skin for testing.
-            if let index = args.firstIndex(of: "-fleet"), index + 1 < args.count {
-                profileStore.debugGrantFleet(FleetSkin.withID(args[index + 1]))
-            }
-            // Debug: -champion clears the whole ladder.
-            if args.contains("-champion") {
-                profileStore.debugConquerLadder()
-            }
-            // Debug: -wins dogbeard=3,soapySal=2 stages exact ladder progress.
-            if let index = args.firstIndex(of: "-wins"), index + 1 < args.count {
-                profileStore.debugSetWins(args[index + 1])
-            }
-            if args.contains("-autoBattle") {
-                let mode: MatchConfig.Mode = args.contains("-pnp") ? .passAndPlay : .ai
-                // -consume: use the real stash + consumable accounting (for testing).
-                let consume = args.contains("-consume")
-                var config = MatchConfig(
-                    mode: mode,
-                    loadout: consume ? profileStore.loadoutShots : Set(ShotType.allCases),
-                    consumesInventory: consume
-                )
-                // -captain <id>: fight a specific ladder rival.
-                if let index = args.firstIndex(of: "-captain"), index + 1 < args.count {
-                    config.captainID = args[index + 1]
-                }
-                path = [.match(config)]
-            } else if let index = args.firstIndex(of: "-screen"), index + 1 < args.count {
-                // Debug deep links for testing: -screen placement|armory|settings
-                switch args[index + 1] {
-                case "placement": path = [.placement(MatchConfig(mode: .ai))]
-                case "battle": path = [.match(MatchConfig(mode: .ai, loadout: Set(ShotType.allCases)))]
-                case "tutorial": path = [.match(.tutorialBattle)]
-                case "captains": path = [.captains(MatchConfig(mode: .ai))]
-                case "harbor": path = [.harbor]
-                case "armory": path = [.armory]
-                case "settings": path = [.settings]
-                case "resume": path = [.match(MatchConfig(mode: .ai, resume: true))]
-                default: break
-                }
+            path = [.match(config)]
+        } else if let index = args.firstIndex(of: "-screen"), index + 1 < args.count {
+            // Debug deep links for testing: -screen placement|armory|settings
+            switch args[index + 1] {
+            case "placement": path = [.placement(MatchConfig(mode: .ai))]
+            case "battle": path = [.match(MatchConfig(mode: .ai, loadout: Set(ShotType.allCases)))]
+            case "tutorial": path = [.match(.tutorialBattle)]
+            case "captains": path = [.captains(MatchConfig(mode: .ai))]
+            case "harbor": path = [.harbor]
+            case "armory": path = [.armory]
+            case "settings": path = [.settings]
+            case "resume": path = [.match(MatchConfig(mode: .ai, resume: true))]
+            default: break
             }
         }
     }
+    #endif
 }
 
 #Preview {

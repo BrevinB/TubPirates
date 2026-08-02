@@ -119,13 +119,20 @@ final class GameCenterController: OpponentController {
     /// player still needs to place their fleet.
     static func loadGame(from match: GKTurnBasedMatch) async throws -> OnlineMatchData {
         let data = try await match.loadMatchData()
-        return MatchDataCodec.decode(data)
+        guard let decoded = MatchDataCodec.decode(data) else {
+            throw MatchDataCodec.CorruptMatchData()
+        }
+        return decoded
     }
 
     /// Contributes the local board (and avatar); initializes the GameState when
     /// both boards are in. Ends the setup turn so the other participant proceeds.
     func submitSetup(board: Board, avatarID: String? = nil) async throws -> OnlineMatchData {
-        var data = MatchDataCodec.decode(try await match.loadMatchData())
+        // Refuse to write over data we can't read — overwriting would wipe
+        // the whole match for both players.
+        guard var data = MatchDataCodec.decode(try await match.loadMatchData()) else {
+            throw MatchDataCodec.CorruptMatchData()
+        }
         let seatKey = localPlayer == .one ? "0" : "1"
         data.boards[seatKey] = board
         if let avatarID {
@@ -151,7 +158,9 @@ final class GameCenterController: OpponentController {
     /// Sends the local player's applied move (and resulting state) to the
     /// opponent, with an optional canned taunt riding along.
     func submitLocalTurn(state: GameState, taunt: String? = nil) async throws {
-        var data = MatchDataCodec.decode(try await match.loadMatchData())
+        guard var data = MatchDataCodec.decode(try await match.loadMatchData()) else {
+            throw MatchDataCodec.CorruptMatchData()
+        }
         data.state = state
         if let taunt, QuickChat.isValid(taunt) {
             var taunts = data.taunts ?? [:]
@@ -248,7 +257,7 @@ final class GameCenterController: OpponentController {
             }
         }
 
-        let data = MatchDataCodec.decode(updatedMatch.matchData)
+        guard let data = MatchDataCodec.decode(updatedMatch.matchData) else { return }
         noteAvatars(from: data)
         noteTaunts(from: data)
 

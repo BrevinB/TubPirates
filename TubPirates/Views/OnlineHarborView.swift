@@ -7,12 +7,17 @@ import BathtubEngine
 /// whose turn), with programmatic auto-matchmaking and friend invites.
 struct OnlineHarborView: View {
     @Binding var path: [Route]
+    @Environment(\.scenePhase) private var scenePhase
     @State private var gameCenter = GameCenterService.shared
     @State private var matches: [HarborMatch] = []
     @State private var isLoading = true
     @State private var isFindingMatch = false
     @State private var showInviteSheet = false
     @State private var abandonTarget: HarborMatch?
+    /// Guards against a second tap on a card while the first open is loading.
+    @State private var openingMatchID: String?
+    /// Network failure to surface ("the seas are rough" alert).
+    @State private var errorMessage: String?
 
     private let parchment = Color(red: 1, green: 0.96, blue: 0.85)
     private let ink = Color(red: 0.35, green: 0.2, blue: 0.08)
@@ -74,6 +79,27 @@ struct OnlineHarborView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .task(id: gameCenter.matchListVersion) {
             await refresh()
+        }
+        // Auth can resolve after the view appears; matchListVersion doesn't
+        // change on that flip, so re-run the load explicitly or the harbor
+        // sits on "No battles underway" forever.
+        .onChange(of: gameCenter.isAuthenticated) { _, _ in
+            Task { await refresh() }
+        }
+        // Returning from the background: turn events aren't guaranteed
+        // (notifications may be declined), so re-pull the list.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await refresh() }
+        }
+        .refreshable { await refresh() }
+        .alert("Rough seas!", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK") { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
         }
         .sheet(isPresented: $showInviteSheet) {
             MatchmakerSheet(
@@ -147,8 +173,11 @@ struct OnlineHarborView: View {
             SoundService.shared.play(.tap)
             Task {
                 defer { isFindingMatch = false }
-                if let match = try? await gameCenter.findMatch() {
+                do {
+                    let match = try await gameCenter.findMatch()
                     await open(match)
+                } catch {
+                    errorMessage = "Couldn't find a battle — check yer connection and try again."
                 }
             }
         } label: {
@@ -196,7 +225,14 @@ struct OnlineHarborView: View {
 
     private func matchCard(_ entry: HarborMatch) -> some View {
         Button {
-            Task { await open(entry.match) }
+            // One open at a time — a second tap while loading would push a
+            // duplicate route sharing the same match controller.
+            guard openingMatchID == nil else { return }
+            openingMatchID = entry.id
+            Task {
+                await open(entry.match)
+                openingMatchID = nil
+            }
         } label: {
             HStack(spacing: 12) {
                 Image(entry.opponentAvatarID ?? "portrait_player")
@@ -222,7 +258,10 @@ struct OnlineHarborView: View {
 
                 Spacer(minLength: 0)
 
-                if entry.isYourTurn {
+                if openingMatchID == entry.id {
+                    ProgressView()
+                        .tint(ink)
+                } else if entry.isYourTurn {
                     Text("YOUR TURN")
                         .font(.system(size: 11, weight: .heavy, design: .rounded))
                         .foregroundStyle(.white)
@@ -276,7 +315,16 @@ struct OnlineHarborView: View {
             isLoading = false
             return
         }
-        let loaded = await gameCenter.loadAllMatches()
+        guard let loaded = await gameCenter.loadAllMatches() else {
+            // Transient failure: keep the list we have rather than wiping it
+            // to the empty state ("my games are gone!"). Only alert when
+            // there's nothing on screen to fall back to.
+            isLoading = false
+            if matches.isEmpty {
+                errorMessage = "Couldn't reach the harbor — check yer connection and pull to refresh."
+            }
+            return
+        }
         let localID = GKLocalPlayer.local.gamePlayerID
         var rows: [HarborMatch] = []
         for match in loaded {
@@ -284,7 +332,8 @@ struct OnlineHarborView: View {
             let localParticipant = match.participants.first { $0.player?.gamePlayerID == localID }
             let seat = gameCenter.localSeat(in: match)
             let opponentKey = seat == .one ? "1" : "0"
-            let data = MatchDataCodec.decode(match.matchData)
+            // Display-only decode; an unreadable payload just loses the avatar.
+            let data = MatchDataCodec.decode(match.matchData) ?? OnlineMatchData()
             rows.append(HarborMatch(
                 id: match.matchID,
                 match: match,

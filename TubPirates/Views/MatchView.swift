@@ -48,7 +48,10 @@ private struct MatchContentView: View {
     let onRematch: () -> Void
 
     @Environment(ProfileStore.self) private var profileStore
+    @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel: MatchViewModel?
+    /// Online match failed to load — explain before bailing to the menu.
+    @State private var loadFailed = false
     @State private var scene: BattleScene?
     @State private var showEndScreen = false
     @State private var rewardApplied = false
@@ -83,6 +86,13 @@ private struct MatchContentView: View {
                     }
                     .transition(.opacity)
                     .zIndex(10)
+                }
+
+                // Online send failure: the shot is applied locally but never
+                // reached the rival — offer a retry, don't lose the move.
+                if viewModel.turnState == .submitFailed {
+                    submitFailedBanner(viewModel)
+                        .zIndex(12)
                 }
             }
 
@@ -142,6 +152,41 @@ private struct MatchContentView: View {
         }
         .toolbarVisibility(.hidden, for: .navigationBar)
         .onAppear(perform: startMatchIfNeeded)
+        // Leaving the screen by ANY route (swipe-back, Leave, notification
+        // navigation, end-screen exit): stop waits and release the match
+        // controller. An orphaned controller swallows the next turn event,
+        // which kills notification taps for this match until a force-quit.
+        .onDisappear {
+            guard case .gameCenter(let matchID) = config.mode else { return }
+            let service = GameCenterService.shared
+            if service.activeMatchID == matchID { service.activeMatchID = nil }
+            viewModel?.abandon()
+            guard let controller = service.controller(for: matchID) else { return }
+            controller.cancelWaiting()
+            controller.onStateReady = nil // don't attach into a dead view
+            // A parked fleet must outlive the screen — the controller submits
+            // it when the turn event arrives. Anything else gets released.
+            if controller.pendingSetupBoard == nil {
+                service.releaseController(for: matchID)
+            }
+        }
+        // Foregrounding without a turn event (notifications declined, event
+        // dropped): re-pull the match so a rival's move still lands — it flows
+        // through handleTurnEvent, so it animates like a live turn.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, case .gameCenter(let matchID) = config.mode,
+                  viewModel != nil else { return }
+            Task {
+                guard let updated = try? await GKTurnBasedMatch.load(withID: matchID) else { return }
+                GameCenterService.shared.register(updated)
+                GameCenterService.shared.controller(for: matchID)?.handleTurnEvent(updated)
+            }
+        }
+        .alert("Couldn't reach the harbor", isPresented: $loadFailed) {
+            Button("Back to Port") { path.removeAll() }
+        } message: {
+            Text("The battle couldn't be loaded — check yer connection and try again from Online Battle.")
+        }
         .onChange(of: viewModel?.turnState) { _, newState in
             // Animate only the handoff cover — a whole-ZStack animation would
             // crossfade the status banner text into a ghosting mess.
@@ -404,7 +449,7 @@ private struct MatchContentView: View {
                     .foregroundStyle(Color(red: 0.12, green: 0.3, blue: 0.52))
                     .shadow(color: .white.opacity(0.9), radius: 2)
                     .padding(.top, 18)
-                Text("It sails over with yer next shot")
+                Text("It sails straight to yer rival")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(Color(red: 0.2, green: 0.4, blue: 0.6))
 
@@ -469,6 +514,32 @@ private struct MatchContentView: View {
                     .offset(x: trailing ? -24 : 24, y: -8)
             }
             .accessibilityLabel(trailing ? "You say: \(line)" : "\(viewModel?.displayName(for: viewModel?.localPlayer.opponent ?? .two) ?? "Captain") says: \(line)")
+    }
+
+    private func submitFailedBanner(_ viewModel: MatchViewModel) -> some View {
+        VStack(spacing: 12) {
+            Text("No wind in the sails!")
+                .font(.system(size: 18, weight: .heavy, design: .rounded))
+                .foregroundStyle(.white)
+            Text("Yer shot couldn't reach the rival.\nCheck yer connection and try again.")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.9))
+                .multilineTextAlignment(.center)
+            Button {
+                SoundService.shared.play(.tap)
+                viewModel.retrySubmit()
+            } label: {
+                Label("Fire Again", systemImage: "arrow.clockwise")
+                    .font(.headline.weight(.bold))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.orange)
+        }
+        .padding(20)
+        .background(.black.opacity(0.75), in: RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal, 40)
     }
 
     private func leaveButton(_ viewModel: MatchViewModel) -> some View {
@@ -541,12 +612,21 @@ private struct MatchContentView: View {
 
     private func startMatchIfNeeded() {
         guard viewModel == nil, !waitingForOpponent else { return }
+        #if DEBUG
         let forceTips = CommandLine.arguments.contains("-battleTips")
+        let suppressTips = CommandLine.arguments.contains("-autoBattle")
+        #else
+        let forceTips = false
+        let suppressTips = false
+        #endif
         if config.mode == .ai, !profileStore.hasSeenBattleTips || forceTips,
-           forceTips || !CommandLine.arguments.contains("-autoBattle") {
+           forceTips || !suppressTips {
             showBattleTips = true
         }
         if case .gameCenter(let matchID) = config.mode {
+            // Mark this match as on-screen so its turn events animate in place
+            // instead of re-triggering navigation.
+            GameCenterService.shared.activeMatchID = matchID
             startOnlineMatch(matchID)
         } else {
             var liveConfig = config
@@ -579,6 +659,12 @@ private struct MatchContentView: View {
         newViewModel.matchDidStart()
     }
 
+    /// Seat-keyed setup boards ("0"/"1") mapped to engine players.
+    private func engineBoards(from data: OnlineMatchData) -> [PlayerID: Board]? {
+        guard let one = data.boards["0"], let two = data.boards["1"] else { return nil }
+        return [.one: one, .two: two]
+    }
+
     private func startOnlineMatch(_ matchID: String) {
         let service = GameCenterService.shared
         guard let match = service.matches[matchID] else {
@@ -605,9 +691,15 @@ private struct MatchContentView: View {
                         controller.pendingSetupAvatarID = profileStore.avatarID
                     }
                 }
+                // The untouched placement fleets, so the view model can rewind
+                // and replay any moves this device hasn't watched land.
+                let initialBoards = engineBoards(from: data)
                 if let state = data.state {
                     waitingForOpponent = false
-                    attach(MatchViewModel(gameCenterState: state, localPlayer: seat, controller: controller))
+                    attach(MatchViewModel(
+                        gameCenterState: state, localPlayer: seat,
+                        controller: controller, initialBoards: initialBoards
+                    ))
                 } else {
                     // Our board is in; the rival is still placing. Stay on the waiting screen.
                     controller.onStateReady = { state in
@@ -616,9 +708,8 @@ private struct MatchContentView: View {
                     }
                 }
             } catch {
-                print("Online match load failed: \(error.localizedDescription)")
                 waitingForOpponent = false
-                path.removeAll()
+                loadFailed = true
             }
         }
     }

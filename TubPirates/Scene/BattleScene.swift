@@ -130,6 +130,10 @@ final class BattleScene: SKScene, BattleSceneRendering {
 
     // MARK: - BattleSceneRendering
 
+    var isPresented: Bool {
+        didSetUp && view != nil && size.width > 0 && size.height > 0
+    }
+
     /// Post-game reveal: draw the rival's board with every ship visible
     /// (own-board rendering shows hulls plus the shot marks already made).
     func revealEnemyFleet() {

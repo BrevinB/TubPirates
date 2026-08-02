@@ -1,8 +1,360 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "" : {
+
+    },
+    "%@ awaits..." : {
+
+    },
+    "%@ is ready!" : {
+
+    },
+    "%@ says: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ says: %2$@"
+          }
+        }
+      }
+    },
+    "%@, %lld wins" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$lld wins"
+          }
+        }
+      }
+    },
+    "%@, locked" : {
+
+    },
+    "%@%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@%2$@"
+          }
+        }
+      }
+    },
+    "%lld" : {
+
+    },
+    "%lld doubloons" : {
+
+    },
+    "%lld wins" : {
+
+    },
+    "%lldW – %lldL" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lldW – %2$lldL"
+          }
+        }
+      }
+    },
+    "+%lld doubloons — welcome aboard!" : {
+
+    },
+    "×%lld" : {
+
+    },
+    "⚓️" : {
+
+    },
+    "⚓️ The Shipyard" : {
+
+    },
+    "🌊" : {
+
+    },
+    "🏴‍☠️" : {
+
+    },
+    "🛁" : {
+
+    },
+    "Abandon Ship" : {
+
+    },
+    "Abandon this battle?" : {
+
+    },
+    "Always armed" : {
+
+    },
+    "Armory" : {
+
+    },
+    "Aye!" : {
+
+    },
+    "Back to Menu" : {
+
+    },
+    "Back to Port" : {
+
+    },
+    "Back to Results" : {
+
+    },
+    "Battle captains around the world!" : {
+
+    },
+    "Battle!" : {
+
+    },
+    "Buy & Arm" : {
+
+    },
+    "Buy & Equip" : {
+
+    },
+    "Buy %@ for %lld doubloons?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Buy %1$@ for %2$lld doubloons?"
+          }
+        }
+      }
+    },
+    "Buy 1" : {
+
+    },
+    "Buy the %@ for %lld doubloons?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Buy the %1$@ for %2$lld doubloons?"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+
+    },
+    "Change captain avatar" : {
+
+    },
+    "Chat" : {
+
+    },
+    "Choose Your Captain" : {
+
+    },
+    "Choose Your Rival" : {
+
+    },
+    "Coins, unlocks, and record will be wiped. This can't be undone." : {
+
+    },
+    "Couldn't reach the harbor" : {
+
+    },
+    "Daily Treasure!" : {
+
+    },
+    "Defeat %@ ×%lld to stock this" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Defeat %1$@ ×%2$lld to stock this"
+          }
+        }
+      }
+    },
+    "Defeat %@ ×%lld to unlock" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Defeat %1$@ ×%2$lld to unlock"
+          }
+        }
+      }
+    },
+    "Done" : {
+
+    },
+    "Doubloon Merchant" : {
+
+    },
+    "Doubloon packs arrive with a future update. Until then — win battles and claim yer daily treasure!" : {
+
+    },
+    "Doubloons" : {
+
+    },
+    "Doubloons are spent on special cannons, avatars, and fleets. Purchases add to your balance instantly." : {
+
+    },
+    "Doubloons: %lld. Get more." : {
+
+    },
+    "Drag toys from the shelf • Tap a ship to rotate" : {
+
+    },
+    "Equipped" : {
+
+    },
+    "Find a Battle!" : {
+
+    },
+    "Find a rival and stake yer claim on the tub!" : {
+
+    },
+    "Fire Again" : {
+
+    },
+    "Fire the Flare Cannon?" : {
+
+    },
+    "Fire!" : {
+
+    },
+    "First win of the day — 2× loot!" : {
+
+    },
+    "Fleet ready, Captain! ⚓️" : {
+
+    },
+    "Hand the device to %@.\nNo peeking at the other fleet!" : {
+
+    },
+    "Invite a Friend" : {
+
+    },
+    "It arms immediately for this battle." : {
+
+    },
+    "It sails straight to yer rival" : {
+
+    },
+    "Keep Fighting" : {
+
+    },
+    "Leave" : {
+
+    },
+    "Leave the battle?" : {
+
+    },
+    "Main Menu" : {
+
+    },
+    "New looks for yer whole fleet — pure style, same firepower." : {
+
+    },
+    "Next" : {
+
+    },
+    "Next rival unlocked!" : {
+
+    },
+    "No battles underway" : {
+
+    },
+    "No wind in the sails!" : {
+
+    },
+    "OK" : {
+
+    },
+    "Pass the tub!" : {
+
+    },
+    "Place Your Fleet" : {
+
+    },
+    "Randomize" : {
+
+    },
+    "Record and achievements" : {
+
+    },
+    "Rematch" : {
+
+    },
+    "Remove from Harbor" : {
+
+    },
+    "Reset Everything" : {
+
+    },
+    "Reset your profile?" : {
+
+    },
+    "Restock the Armory" : {
+
+    },
+    "Rotate chain shot" : {
+
+    },
+    "Rough seas!" : {
+
+    },
+    "Scanning the seas..." : {
+
+    },
+    "Send a Message" : {
+
+    },
+    "Set Sail!" : {
+
+    },
+    "Settings" : {
+
+    },
+    "Sign In" : {
+
+    },
+    "Sign in to Game Center to set sail against real rivals." : {
+
+    },
+    "Sink each captain's fleet to face the next rival!" : {
+
+    },
+    "Skip" : {
+
+    },
+    "Stock up before battle — every shot you fire is spent from your stash!" : {
+
+    },
+    "Tap to battle!" : {
+
+    },
+    "Tap to claim yer loot" : {
+
+    },
+    "Tap to continue (%lld/%lld)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Tap to continue (%1$lld/%2$lld)"
+          }
+        }
+      }
+    },
+    "Tap to equip" : {
+
+    },
     "TAUNT_PUSH" : {
       "comment" : "Push notification body for an incoming quick-chat taunt. %@ is the canned message.",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -14,6 +366,7 @@
     },
     "TAUNT_SEEN" : {
       "comment" : "Benign text for exchange replies/cancellations (rarely user-visible).",
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -22,6 +375,81 @@
           }
         }
       }
+    },
+    "The battle couldn't be loaded — check yer connection and try again from Online Battle." : {
+
+    },
+    "The doubloon packs couldn't be loaded. Check yer connection and try again." : {
+
+    },
+    "The Harbor" : {
+
+    },
+    "The merchant be asleep!" : {
+
+    },
+    "The merchant be unreachable!" : {
+
+    },
+    "The purchase didn't go through" : {
+
+    },
+    "The tub is yours, Captain!" : {
+
+    },
+    "Their fleet, revealed!" : {
+
+    },
+    "Trophy" : {
+
+    },
+    "Try Again" : {
+
+    },
+    "Tub Pirates" : {
+
+    },
+    "Tutorial: %@" : {
+
+    },
+    "View Their Fleet" : {
+
+    },
+    "Waiting for your rival to place their fleet..." : {
+
+    },
+    "Ye need %lld more doubloons, matey." : {
+
+    },
+    "Ye need %lld more doubloons. Win battles to earn them!" : {
+
+    },
+    "Ye've earned yer first doubloons, captain! Spend 'em on a new face — or save 'em for cannons in the Armory." : {
+
+    },
+    "Yer battles across the seven tubs" : {
+
+    },
+    "Yer rival will be handed the win." : {
+
+    },
+    "Yer shot couldn't reach the rival.\nCheck yer connection and try again." : {
+
+    },
+    "Yer stash is empty — special cannons turn the tide, matey!" : {
+
+    },
+    "You can rejoin any time from Online Battle." : {
+
+    },
+    "You say: %@" : {
+
+    },
+    "Your battle is saved — resume it from the main menu." : {
+
+    },
+    "YOUR TURN" : {
+
     }
   },
   "version" : "1.0"
