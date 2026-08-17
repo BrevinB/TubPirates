@@ -49,9 +49,6 @@
     "%lld doubloons" : {
 
     },
-    "%lld wins" : {
-
-    },
     "%lldW – %lldL" : {
       "localizations" : {
         "en" : {
@@ -240,6 +237,9 @@
     "Forfeit Battle" : {
 
     },
+    "Got a doubloon code from the captain?" : {
+
+    },
     "Hand the device to %@.\nNo peeking at the other fleet!" : {
 
     },
@@ -276,9 +276,6 @@
     "Next" : {
 
     },
-    "Next rival unlocked!" : {
-
-    },
     "No battles underway" : {
 
     },
@@ -298,6 +295,9 @@
 
     },
     "Record and achievements" : {
+
+    },
+    "Redeem a Code" : {
 
     },
     "Rematch" : {

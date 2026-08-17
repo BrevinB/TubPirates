@@ -15,6 +15,10 @@ struct MatchConfig: Hashable {
     var playerBoard: Board?
     /// Shot types the player brings into battle (from the profile's stash).
     var loadout: Set<ShotType> = [.cannon]
+    /// Shot types an AI rival brings. nil mirrors `loadout` (tutorial, debug,
+    /// pass-and-play); ladder battles pass the armory's in-stock set so
+    /// rivals wield specials whether or not the player bought any.
+    var rivalLoadout: Set<ShotType>?
     /// Firing a special deducts a use from the profile stash (AI battles;
     /// off for pass-and-play, online, and the debug all-shots override).
     var consumesInventory: Bool = false

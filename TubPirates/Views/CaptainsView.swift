@@ -82,7 +82,7 @@ struct CaptainsView: View {
 
                     if unlocked {
                         HStack(spacing: 10) {
-                            winPips(wins: wins, needed: captain.winsToAdvance, hasNext: captain.next != nil)
+                            winPips(wins: wins, needed: captain.winsToAdvance)
                             Spacer()
                             HStack(spacing: 3) {
                                 Image("coin_doubloon")
@@ -98,6 +98,14 @@ struct CaptainsView: View {
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
                             .background(Color(red: 0.35, green: 0.2, blue: 0.08), in: Capsule())
+                        }
+                        // Status on its own full-width line: squeezed beside
+                        // the pips and reward chip it truncated to "Nex t r…".
+                        if let (caption, color) = progressCaption(for: captain, wins: wins) {
+                            Text(caption)
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .foregroundStyle(color)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     } else if let index = Captain.roster.firstIndex(of: captain), index > 0 {
                         let previous = Captain.roster[index - 1]
@@ -149,31 +157,29 @@ struct CaptainsView: View {
         }
     }
 
-    /// Progress toward unlocking the next rung (or a lifetime tally at the top).
-    private func winPips(wins: Int, needed: Int, hasNext: Bool) -> some View {
+    /// Progress toward this rung's goal: the next rival, or — on the final
+    /// rung — the champion's trophy fleet. (The last captain used to show a
+    /// bare lifetime tally, hiding the Gilded Armada's requirement.)
+    private func winPips(wins: Int, needed: Int) -> some View {
         HStack(spacing: 4) {
-            if hasNext {
-                ForEach(0..<needed, id: \.self) { index in
-                    Image(systemName: index < wins ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 13))
-                        .foregroundStyle(index < wins ? Color.green : Color(red: 0.6, green: 0.45, blue: 0.28))
-                }
-                if wins >= needed {
-                    Text("Next rival unlocked!")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundStyle(.green)
-                        .lineLimit(2)
-                        // Squeezed beside 4-5 pips + the reward chip, this text
-                        // used to collapse into a one-character-wide column.
-                        .layoutPriority(1)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            } else {
-                Text("\(wins) wins")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color(red: 0.45, green: 0.3, blue: 0.15))
+            ForEach(0..<needed, id: \.self) { index in
+                Image(systemName: index < wins ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 13))
+                    .foregroundStyle(index < wins ? Color.green : Color(red: 0.6, green: 0.45, blue: 0.28))
             }
         }
+    }
+
+    /// The line under the pips saying what filling them earns.
+    private func progressCaption(for captain: Captain, wins: Int) -> (String, Color)? {
+        let done = wins >= captain.winsToAdvance
+        if captain.next != nil {
+            return done ? ("Next rival unlocked!", .green) : nil
+        }
+        // Final rung: the ladder-champion trophy.
+        return done
+            ? ("The Gilded Armada is yours!", .green)
+            : ("Win ×\(captain.winsToAdvance) to claim the Gilded Armada fleet", Color(red: 0.72, green: 0.5, blue: 0.12))
     }
 }
 

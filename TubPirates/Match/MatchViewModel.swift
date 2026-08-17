@@ -288,12 +288,15 @@ final class MatchViewModel {
         ]
         switch config.mode {
         case .ai, .gameCenter:
-            // The rival mirrors the player's arsenal so difficulty scales with
-            // progression instead of outgunning fresh captains.
+            // The rival carries the armory's in-stock arsenal (when provided),
+            // not the player's stash: specials stay in the fight even for a
+            // player who never buys any — both for challenge and as a demo of
+            // what the armory sells. Stock is ladder-gated, so fresh captains
+            // still aren't outgunned.
             // (.gameCenter never lands here — online matches use init(gameCenterState:...).)
             state = GameState(boards: boards, loadouts: [
                 .one: config.loadout,
-                .two: config.loadout,
+                .two: config.rivalLoadout ?? config.loadout,
             ])
             opponent = AIOpponentController(
                 captain: captain,

@@ -27,6 +27,13 @@ struct MainMenuView: View {
         debugAllShots ? Set(ShotType.allCases) : profileStore.loadoutShots
     }
 
+    /// What the rival captain wields: everything the armory currently stocks
+    /// for this player — what they COULD buy, not what they've bought — so
+    /// battles showcase specials even for a player with an empty stash.
+    private var rivalBattleLoadout: Set<ShotType> {
+        Set(ShotType.allCases.filter { profileStore.isShotInStock($0) })
+    }
+
     /// Drives the gentle floating rock of the title.
 
     var body: some View {
@@ -130,6 +137,7 @@ struct MainMenuView: View {
                         path.append(.captains(MatchConfig(
                             mode: .ai,
                             loadout: battleLoadout,
+                            rivalLoadout: rivalBattleLoadout,
                             consumesInventory: !debugAllShots
                         )))
                     }
