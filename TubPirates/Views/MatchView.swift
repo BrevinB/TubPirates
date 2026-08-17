@@ -104,10 +104,15 @@ private struct MatchContentView: View {
                     VStack(spacing: 10) {
                         Text("Their fleet, revealed!")
                             .font(.system(size: 15, weight: .heavy, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.05))
                             .padding(.horizontal, 14)
                             .padding(.vertical, 7)
-                            .background(.black.opacity(0.45), in: Capsule())
+                            .background(
+                                Capsule()
+                                    .fill(Color(red: 1, green: 0.96, blue: 0.85))
+                                    .strokeBorder(Color(red: 0.75, green: 0.55, blue: 0.2), lineWidth: 2)
+                            )
+                            .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
                         Button {
                             showingFleetPeek = false
                             showEndScreen = true
@@ -379,6 +384,48 @@ private struct MatchContentView: View {
                 EndPortrait(imageName: playerImage, renderSad: true))
     }
 
+    /// Five tiny segment rows, one per ship, largest on top — fleet health at
+    /// a glance without squinting at the mini board. Own bar fills damaged
+    /// segments red; the rival's rows only flip when a ship actually sinks.
+    private func fleetBar(
+        _ fleet: [MatchViewModel.FleetShipStatus],
+        alignment: HorizontalAlignment
+    ) -> some View {
+        VStack(alignment: alignment, spacing: 2.5) {
+            ForEach(fleet) { ship in
+                HStack(spacing: 1.5) {
+                    ForEach(0..<ship.length, id: \.self) { segment in
+                        RoundedRectangle(cornerRadius: 1.5)
+                            .fill(segmentColor(ship, segment: segment))
+                            .frame(width: 8, height: 5.5)
+                    }
+                }
+                .overlay {
+                    if ship.isSunk {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 8, weight: .black))
+                            .foregroundStyle(Color(red: 1, green: 0.3, blue: 0.25))
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 5)
+        .padding(.vertical, 4)
+        // Solid ship's-timber brown (the reward chips' color) instead of
+        // translucent black; the cream segments stay high-contrast on it.
+        .background(
+            RoundedRectangle(cornerRadius: 7)
+                .fill(Color(red: 0.35, green: 0.2, blue: 0.08).opacity(0.88))
+        )
+        .animation(.easeInOut(duration: 0.3), value: fleet.map(\.hitCount))
+    }
+
+    private func segmentColor(_ ship: MatchViewModel.FleetShipStatus, segment: Int) -> Color {
+        if ship.isSunk { return Color(white: 0.35) }
+        if segment < ship.hitCount { return Color(red: 0.9, green: 0.25, blue: 0.18) }
+        return Color(red: 1, green: 0.94, blue: 0.8)
+    }
+
     private func hud(_ viewModel: MatchViewModel) -> some View {
         VStack {
             HStack(alignment: .top) {
@@ -388,10 +435,20 @@ private struct MatchContentView: View {
                         name: viewModel.displayName(for: viewModel.localPlayer.opponent),
                         highlighted: viewModel.highlightedPlayer == viewModel.localPlayer.opponent
                     )
+                    fleetBar(viewModel.enemyFleetStatus, alignment: .leading)
                     leaveButton(viewModel)
                 }
                 Spacer()
-                statusBanner(viewModel)
+                // While someone talks, the status pill becomes the speech —
+                // chat lives in the top chrome band where it can't cover the
+                // board, instead of floating bubbles over playable water.
+                if let speech = activeSpeech(viewModel) {
+                    speechPill(speech)
+                        .id(speech.text) // new line = new view, no crossfading texts
+                        .transition(.scale(scale: 0.7, anchor: .top).combined(with: .opacity))
+                } else {
+                    statusBanner(viewModel)
+                }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 8) {
                     PlayerHUDView(
@@ -399,6 +456,7 @@ private struct MatchContentView: View {
                         name: viewModel.displayName(for: viewModel.localPlayer),
                         highlighted: viewModel.highlightedPlayer == viewModel.localPlayer
                     )
+                    fleetBar(viewModel.ownFleetStatus, alignment: .trailing)
                     if showsQuickChat(viewModel) {
                         Button {
                             SoundService.shared.play(.tap)
@@ -406,51 +464,34 @@ private struct MatchContentView: View {
                         } label: {
                             Label("Chat", systemImage: "bubble.left.fill")
                                 .font(.system(size: 13, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.05))
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background(.black.opacity(0.4), in: Capsule())
+                                .background(
+                                    Capsule()
+                                        .fill(Color(red: 1, green: 0.96, blue: 0.85))
+                                        .strokeBorder(Color(red: 0.75, green: 0.55, blue: 0.2), lineWidth: 2)
+                                )
+                                .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
                         }
                         .buttonStyle(.plain)
                     }
                 }
             }
             .padding(.horizontal, 12)
-
-            // Speech bubbles get their own row under the HUD — over open
-            // water, never covering the portraits, Leave, or status banner.
-            // Captain banter (AI) sits leading; online chat sits under its
-            // sender (rival leading, yours trailing).
-            HStack {
-                if let line = viewModel.captainLine {
-                    speechBubble(line)
-                        .id(line) // new line = new view, so texts never crossfade into each other
-                        .transition(.scale(scale: 0.6, anchor: .topLeading).combined(with: .opacity))
-                } else if let chat = viewModel.chatLine, !chat.mine {
-                    speechBubble(chat.text)
-                        .id(chat.text)
-                        .transition(.scale(scale: 0.6, anchor: .topLeading).combined(with: .opacity))
-                }
-                Spacer()
-                if let chat = viewModel.chatLine, chat.mine {
-                    speechBubble(chat.text, trailing: true)
-                        .id(chat.text)
-                        .transition(.scale(scale: 0.6, anchor: .topTrailing).combined(with: .opacity))
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.top, 2)
             .animation(.spring(duration: 0.3), value: viewModel.captainLine)
             .animation(.spring(duration: 0.3), value: viewModel.chatLine)
 
             Spacer()
-
-            HStack {
-                Spacer()
-                ShotPanelView(viewModel: viewModel)
-                    .padding(.trailing, 6)
-            }
-            .padding(.bottom, 40)
+        }
+        // The shot panel is bottom-anchored, so it overlays instead of
+        // sharing the VStack: on squat screens the stacked total could
+        // exceed the height when a speech bubble showed, and the vertical
+        // squeeze truncated the HUD name labels to one line.
+        .overlay(alignment: .bottomTrailing) {
+            ShotPanelView(viewModel: viewModel)
+                .padding(.trailing, 6)
+                .padding(.bottom, 40)
         }
     }
 
@@ -510,36 +551,87 @@ private struct MatchContentView: View {
 
     /// Comic-style speech bubble; tail points up toward the speaker's card
     /// (leading for the rival/captain, trailing for your own chat).
-    private func speechBubble(_ line: String, trailing: Bool = false) -> some View {
-        Text(line)
-            .font(.system(size: 13, weight: .bold, design: .rounded))
-            .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.05))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .frame(maxWidth: 190, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(red: 1, green: 0.96, blue: 0.85))
-                    .strokeBorder(Color(red: 0.75, green: 0.55, blue: 0.2), lineWidth: 2)
+    /// A line of speech and who's saying it, for the top-band pill.
+    private struct SpeechLine: Equatable {
+        let text: String
+        let mine: Bool
+        let portrait: String
+        let speakerName: String
+    }
+
+    private func activeSpeech(_ viewModel: MatchViewModel) -> SpeechLine? {
+        if let line = viewModel.captainLine {
+            return SpeechLine(
+                text: line,
+                mine: false,
+                portrait: viewModel.enemyPortrait,
+                speakerName: viewModel.displayName(for: viewModel.localPlayer.opponent)
             )
-            .overlay(alignment: trailing ? .topTrailing : .topLeading) {
-                // Tail pointing up toward the speaker's card.
-                Triangle()
-                    .fill(Color(red: 1, green: 0.96, blue: 0.85))
-                    .frame(width: 16, height: 9)
-                    .offset(x: trailing ? -24 : 24, y: -8)
-            }
-            .accessibilityLabel(trailing ? "You say: \(line)" : "\(viewModel?.displayName(for: viewModel?.localPlayer.opponent ?? .two) ?? "Captain") says: \(line)")
+        }
+        if let chat = viewModel.chatLine {
+            return SpeechLine(
+                text: chat.text,
+                mine: chat.mine,
+                portrait: chat.mine
+                    ? (viewModel.mode == .passAndPlay ? "portrait_player" : profileStore.avatarID)
+                    : viewModel.enemyPortrait,
+                speakerName: chat.mine ? "You" : viewModel.displayName(for: viewModel.localPlayer.opponent)
+            )
+        }
+        return nil
+    }
+
+    /// The talking version of the status pill: parchment, the speaker's mini
+    /// portrait, and a tail toward their card. Lives in the top chrome band
+    /// so speech never covers the board.
+    private func speechPill(_ speech: SpeechLine) -> some View {
+        HStack(alignment: .top, spacing: 7) {
+            if !speech.mine { speakerThumb(speech.portrait) }
+            Text(speech.text)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.05))
+                .fixedSize(horizontal: false, vertical: true)
+            if speech.mine { speakerThumb(speech.portrait) }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(
+            RoundedRectangle(cornerRadius: 13)
+                .fill(Color(red: 1, green: 0.96, blue: 0.85))
+                .strokeBorder(Color(red: 0.75, green: 0.55, blue: 0.2), lineWidth: 2)
+        )
+        .overlay(alignment: speech.mine ? .trailing : .leading) {
+            // Tail pointing sideways toward the speaker's avatar card.
+            Triangle()
+                .fill(Color(red: 1, green: 0.96, blue: 0.85))
+                .frame(width: 14, height: 9)
+                .rotationEffect(.degrees(speech.mine ? 90 : -90))
+                .offset(x: speech.mine ? 9 : -9)
+        }
+        .frame(maxWidth: 240)
+        .accessibilityLabel(speech.mine ? "You say: \(speech.text)" : "\(speech.speakerName) says: \(speech.text)")
+    }
+
+    private func speakerThumb(_ imageName: String) -> some View {
+        Image(imageName)
+            .resizable()
+            .scaledToFill()
+            .frame(width: 26, height: 26)
+            .clipShape(RoundedRectangle(cornerRadius: 7))
+            .overlay(
+                RoundedRectangle(cornerRadius: 7)
+                    .strokeBorder(Color(red: 0.75, green: 0.55, blue: 0.2), lineWidth: 1.5)
+            )
     }
 
     private func submitFailedBanner(_ viewModel: MatchViewModel) -> some View {
         VStack(spacing: 12) {
             Text("No wind in the sails!")
                 .font(.system(size: 18, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.05))
             Text("Yer shot couldn't reach the rival.\nCheck yer connection and try again.")
                 .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(Color(red: 0.45, green: 0.3, blue: 0.15))
                 .multilineTextAlignment(.center)
             Button {
                 SoundService.shared.play(.tap)
@@ -554,7 +646,12 @@ private struct MatchContentView: View {
             .tint(.orange)
         }
         .padding(20)
-        .background(.black.opacity(0.75), in: RoundedRectangle(cornerRadius: 16))
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(red: 1, green: 0.96, blue: 0.85))
+                .strokeBorder(Color(red: 0.75, green: 0.55, blue: 0.2), lineWidth: 2.5)
+                .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+        )
         .padding(.horizontal, 40)
     }
 
@@ -564,10 +661,15 @@ private struct MatchContentView: View {
         } label: {
             Label("Leave", systemImage: "rectangle.portrait.and.arrow.right")
                 .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.05))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(.black.opacity(0.4), in: Capsule())
+                .background(
+                    Capsule()
+                        .fill(Color(red: 1, green: 0.96, blue: 0.85))
+                        .strokeBorder(Color(red: 0.75, green: 0.55, blue: 0.2), lineWidth: 2)
+                )
+                .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
         }
         .confirmationDialog(
             "Leave the battle?",
@@ -615,15 +717,23 @@ private struct MatchContentView: View {
         }
     }
 
+    /// Same parchment family as the speech pill, so the top band reads as one
+    /// object that alternates between game state and table talk (the old
+    /// translucent black capsule looked like system chrome in a pirate tub).
     private func statusBanner(_ viewModel: MatchViewModel) -> some View {
         Text(viewModel.statusText)
-            .font(.system(size: 15, weight: .heavy, design: .rounded))
-            .foregroundStyle(.white)
+            .font(.system(size: 14.5, weight: .heavy, design: .rounded))
+            .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.05))
             .lineLimit(2)
             .multilineTextAlignment(.center)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .background(.black.opacity(0.4), in: Capsule())
+            .background(
+                Capsule()
+                    .fill(Color(red: 1, green: 0.96, blue: 0.85))
+                    .strokeBorder(Color(red: 0.75, green: 0.55, blue: 0.2), lineWidth: 2)
+            )
+            .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
     }
 
     private func analyticsModeName(_ mode: MatchConfig.Mode) -> String {

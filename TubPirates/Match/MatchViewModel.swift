@@ -94,6 +94,46 @@ final class MatchViewModel {
         state.boards[localPlayer.opponent] ?? Board()
     }
 
+    // MARK: - Fleet status (HUD bars)
+
+    /// One row of the HUD fleet bar: a ship's length, damage, and fate.
+    struct FleetShipStatus: Identifiable {
+        let id: String
+        let length: Int
+        /// Segments to fill as damaged (own fleet only; the rival's is 0 or all).
+        let hitCount: Int
+        let isSunk: Bool
+    }
+
+    /// The local player's fleet, largest first, with per-cell damage.
+    var ownFleetStatus: [FleetShipStatus] {
+        let board = ownBoard
+        return ShipKind.standardFleet.compactMap { kind in
+            guard let ship = board.ships.first(where: { $0.kind == kind }) else { return nil }
+            return FleetShipStatus(
+                id: kind.rawValue,
+                length: ship.kind.length,
+                hitCount: ship.cells.filter(board.hitCells.contains).count,
+                isSunk: board.isSunk(ship)
+            )
+        }
+    }
+
+    /// The rival's fleet from legal knowledge only: afloat or sunk, never
+    /// partial damage — which un-sunk ship a hit belongs to stays hidden.
+    var enemyFleetStatus: [FleetShipStatus] {
+        let sunkKinds = Set(enemyView.sunkShips.map(\.kind))
+        return ShipKind.standardFleet.map { kind in
+            let sunk = sunkKinds.contains(kind)
+            return FleetShipStatus(
+                id: kind.rawValue,
+                length: kind.length,
+                hitCount: sunk ? kind.length : 0,
+                isSunk: sunk
+            )
+        }
+    }
+
     /// Online rival identity: Game Center display name + the avatar they
     /// chose in-game (carried inside the match data).
     var onlineOpponentName: String?
