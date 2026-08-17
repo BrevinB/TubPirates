@@ -149,6 +149,7 @@ extension Captain {
         specialUseChance: 0.22,
         rewardMultiplier: 1.5,
         winsToAdvance: 4,
+        fleetID: "ducky",
         lines: [
             .matchStart: [
                 "Well well... fresh prey paddles into my tub~",
@@ -256,7 +257,7 @@ extension Captain {
         specialUseChance: 0.3,
         rewardMultiplier: 2.0,
         winsToAdvance: 3,
-        fleetID: "ducky",
+        fleetID: "gilded",
         lines: [
             .matchStart: [
                 "Harrumph! State your business in MY waters, sailor!",

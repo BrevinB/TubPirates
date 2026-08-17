@@ -127,8 +127,11 @@ final class BoardNode: SKNode {
                 shipSprites[id] = sprite
             }
             sprite.alpha = alpha
+            // A light char, not a blackout: the red cells and X marks already
+            // say "destroyed", and heavier blends grey out showpiece skins
+            // (sunk gold should still gleam).
             sprite.color = .black
-            sprite.colorBlendFactor = isSunk ? 0.6 : 0
+            sprite.colorBlendFactor = isSunk ? 0.25 : 0
         }
     }
 
