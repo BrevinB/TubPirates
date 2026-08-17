@@ -146,6 +146,11 @@ final class MatchViewModel {
         guard let index = args.firstIndex(of: "-enemyAvatar"), index + 1 < args.count else { return nil }
         return args[index + 1]
     }()
+    static let debugChatLine: String? = {
+        let args = CommandLine.arguments
+        guard let index = args.firstIndex(of: "-chatLine"), index + 1 < args.count else { return nil }
+        return args[index + 1]
+    }()
     #endif
 
     func displayName(for player: PlayerID) -> String {
@@ -302,6 +307,17 @@ final class MatchViewModel {
             ])
             opponent = nil
         }
+
+        #if DEBUG
+        // Screenshot staging: -chatLine "Arr!" pins a rival quick-chat bubble
+        // once the auto-battle has developed the board.
+        if let line = Self.debugChatLine {
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(15))
+                self?.chatLine = ChatLine(text: line, mine: false)
+            }
+        }
+        #endif
     }
 
     /// Builds the onboarding battle: fixed fleets, with a scripted exchange of
@@ -360,6 +376,17 @@ final class MatchViewModel {
 
     func abandon() {
         isAbandoned = true
+    }
+
+    /// Set when the player forfeits a local battle, so a move resolving
+    /// mid-exit can't write the save back after it's cleared.
+    private(set) var isForfeited = false
+
+    /// Throws away a local (AI / pass-and-play) battle for good: no save,
+    /// no "Resume Battle" on the menu. Online matches use abandon() instead.
+    func forfeitLocalMatch() {
+        isForfeited = true
+        MatchSaveStore.clear()
     }
 
     /// Online matches arrive with a server-synced state and an assigned seat.
@@ -480,6 +507,7 @@ final class MatchViewModel {
 
         if case .finished(let winner) = state.phase {
             turnState = .finished(winner: winner)
+            finalizeOnlineMatchIfNeeded()
             return
         }
         if state.currentPlayer == localPlayer {
@@ -490,12 +518,24 @@ final class MatchViewModel {
         }
     }
 
+    /// A finished game whose Game Center match is still live means the winning
+    /// device died before endMatchInTurn landed — without this, the match
+    /// says "your turn" forever. Safe to fire on every finished (re)entry;
+    /// the controller no-ops when the match already ended server-side.
+    private func finalizeOnlineMatchIfNeeded() {
+        guard case .gameCenter = mode,
+              let controller = opponent as? GameCenterController else { return }
+        let finishedState = state
+        Task { await controller.finalizeFinishedMatchIfNeeded(state: finishedState) }
+    }
+
     /// Called once the scene is wired up; kicks off auto-play when enabled.
     func matchDidStart() {
         // Revisiting a match that already ended (e.g. from Game Center's
         // match list): straight to the end state, no listening for turns.
         if case .finished(let winner) = state.phase {
             turnState = .finished(winner: winner)
+            finalizeOnlineMatchIfNeeded()
             return
         }
         saveIfNeeded()
@@ -532,6 +572,7 @@ final class MatchViewModel {
     /// Persists AI and pass-and-play battles so leaving mid-match isn't fatal.
     private func saveIfNeeded() {
         guard !isTutorial else { return } // the onboarding battle is disposable
+        guard !isForfeited else { return } // forfeited: the save stays cleared
         let savedMode: SavedMatch.SavedMode
         switch mode {
         case .ai: savedMode = .ai
@@ -659,7 +700,7 @@ final class MatchViewModel {
         // paying out a win) on an unsent move desyncs us from the server and
         // makes the reward repeatable.
         if case .gameCenter = mode, move.player == localPlayer {
-            guard await submitTurnToGameCenter() else {
+            guard await submitTurnToGameCenter(resolution: resolution) else {
                 pendingSubmitResolution = resolution
                 turnState = .submitFailed
                 return
@@ -673,10 +714,14 @@ final class MatchViewModel {
     private var pendingSubmitResolution: MoveResolution?
 
     /// Sends the applied local move to Game Center. Returns false on failure.
-    private func submitTurnToGameCenter() async -> Bool {
+    private func submitTurnToGameCenter(resolution: MoveResolution) async -> Bool {
         guard let controller = opponent as? GameCenterController else { return true }
         do {
-            try await controller.submitLocalTurn(state: state, taunt: pendingTaunt)
+            try await controller.submitLocalTurn(
+                state: state,
+                taunt: pendingTaunt,
+                pushMessage: Self.turnPushMessage(for: resolution)
+            )
             pendingTaunt = nil
             return true
         } catch {
@@ -684,12 +729,31 @@ final class MatchViewModel {
         }
     }
 
+    /// The rival's notification text for the move we just made — written from
+    /// the RECEIVER's point of view (it lands on the defender's device).
+    private static func turnPushMessage(for resolution: MoveResolution) -> String {
+        let name = GKLocalPlayer.local.alias
+        if resolution.winner != nil {
+            return "☠️ \(name) sank your fleet — the battle is lost!"
+        }
+        if let sunk = resolution.sunkShips.first {
+            return "🔥 \(name) sank your \(sunk.kind.displayName)! Your move, Captain."
+        }
+        if resolution.move.shot.spec.effect != .damage {
+            return "🔭 \(name) scouted your waters — your move, Captain!"
+        }
+        if resolution.cellResults.contains(where: { $0.outcome == .hit }) {
+            return "💥 \(name) hit your fleet — your move, Captain!"
+        }
+        return "🌊 \(name)'s shot splashed into the tub — your move, Captain!"
+    }
+
     /// Retry a send that failed (the "no wind in the sails" banner's button).
     func retrySubmit() {
         guard turnState == .submitFailed, let resolution = pendingSubmitResolution else { return }
         turnState = .resolvingPlayerShot
         Task {
-            guard await submitTurnToGameCenter() else {
+            guard await submitTurnToGameCenter(resolution: resolution) else {
                 turnState = .submitFailed
                 return
             }

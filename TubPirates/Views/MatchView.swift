@@ -1,5 +1,6 @@
 import SwiftUI
 import SpriteKit
+import StoreKit
 import GameKit
 import BathtubEngine
 
@@ -46,7 +47,7 @@ private struct MatchContentView: View {
     let config: MatchConfig
     @Binding var path: [Route]
     let onRematch: () -> Void
-
+    @Environment(\.requestReview) private var requestReview
     @Environment(ProfileStore.self) private var profileStore
     @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel: MatchViewModel?
@@ -308,15 +309,30 @@ private struct MatchContentView: View {
                     },
                     onRematch: {
                         showEndScreen = false
+                        maybeRequestReview()
                         onRematch()
                     },
                     onExit: {
                         showEndScreen = false
+                        maybeRequestReview()
                         path.removeAll()
                     }
                 )
             }
         }
+    }
+
+    /// Ask for an App Store rating when leaving the victory screen at a win
+    /// milestone — after the celebration, never during it. Tutorial wins are
+    /// scripted and pass-and-play "wins" are meaningless (didWin is always
+    /// true there), so neither counts. Apple may still suppress the prompt;
+    /// we record the ask either way so milestones aren't burned twice.
+    private func maybeRequestReview() {
+        guard let viewModel, viewModel.didWin, !viewModel.isTutorial,
+              viewModel.mode != .passAndPlay,
+              profileStore.isReviewPromptDue else { return }
+        profileStore.markReviewPrompted()
+        requestReview()
     }
 
     /// After a real-economy AI defeat with a drained stash, the end screen
@@ -570,12 +586,20 @@ private struct MatchContentView: View {
                 }
                 path.removeAll()
             }
+            if case .gameCenter = viewModel.mode {} else if !viewModel.isTutorial {
+                Button("Forfeit Battle", role: .destructive) {
+                    viewModel.forfeitLocalMatch()
+                    path.removeAll()
+                }
+            }
             Button("Keep Fighting", role: .cancel) {}
         } message: {
             if case .gameCenter = viewModel.mode {
                 Text("You can rejoin any time from Online Battle.")
+            } else if viewModel.isTutorial {
+                Text("You can restart the tutorial from the main menu.")
             } else {
-                Text("Your battle is saved — resume it from the main menu.")
+                Text("Leave saves your battle for later — forfeit throws it away.")
             }
         }
     }

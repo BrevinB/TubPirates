@@ -9,6 +9,7 @@ struct PlayerProfile: Codable, Equatable {
     var shotInventory: [ShotType: Int] = PlayerProfile.starterInventory
     var wins: Int = 0
     var losses: Int = 0
+    var lastReviewMilestone: Int = 0
     var avatarID: String = Avatar.defaultID
     /// Equipped cosmetic fleet skin and the set of purchased ones.
     var fleetID: String = "classic"
@@ -21,6 +22,7 @@ struct PlayerProfile: Codable, Equatable {
     var lastDailyChestClaim: Date?
     /// When the first-win-of-the-day bonus was last granted.
     var lastFirstWinBonus: Date?
+    var lastReviewRequest: Date?
     /// Total doubloons ever earned (never decremented) — leaderboard fodder.
     var lifetimeDoubloons: Int = 0
     /// Every special shot type the player has ever fired (achievement).
@@ -85,6 +87,9 @@ struct PlayerProfile: Codable, Equatable {
         if captainWins.isEmpty, wins > 0 {
             captainWins["dogbeard"] = wins
         }
+        
+        lastReviewRequest = try container.decodeIfPresent(Date.self, forKey: .lastReviewRequest)
+        lastReviewMilestone = try container.decodeIfPresent(Int.self, forKey: .lastReviewMilestone) ?? 0
     }
 
     private enum LegacyKeys: String, CodingKey {

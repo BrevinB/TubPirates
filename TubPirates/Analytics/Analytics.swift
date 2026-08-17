@@ -75,6 +75,10 @@ enum Analytics {
         signal("Onboarding.tipsFinished")
     }
 
+    static func reviewPrompted(milestone: Int) {
+        signal("Review.prompted", ["milestone": String(milestone)])
+    }
+
     static func captainDefeated(_ captainID: String, totalWins: Int) {
         signal("Ladder.captainDefeated", [
             "captain": captainID,

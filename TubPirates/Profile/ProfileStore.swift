@@ -8,6 +8,8 @@ final class ProfileStore {
     private(set) var profile: PlayerProfile
 
     private let defaults: UserDefaults
+    
+    private static let reviewMilestones = [3, 10, 25]
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -179,6 +181,12 @@ final class ProfileStore {
 
     /// A captain is battle-able when every earlier rung has been cleared.
     func isUnlocked(_ captain: Captain) -> Bool {
+        #if DEBUG
+        // Settings → Developer toggle: every rival battle-able without
+        // touching the saved ladder (unlike debugConquerLadder, flipping it
+        // back off restores real progress).
+        if UserDefaults.standard.bool(forKey: "debugAllOpponents") { return true }
+        #endif
         guard let index = Captain.roster.firstIndex(of: captain) else { return false }
         return Captain.roster[..<index].allSatisfy {
             wins(against: $0) >= $0.winsToAdvance
@@ -213,6 +221,26 @@ final class ProfileStore {
         profile.hasSeenBattleTips = false
         profile.hasPickedCaptain = false
         save()
+    }
+    
+    var isReviewPromptDue: Bool {
+        guard let milestone = Self.reviewMilestones.first(where: { $0 > profile.lastReviewMilestone}),
+              profile.wins >= milestone else { return false }
+        
+        if let last = profile.lastReviewRequest,
+           Date.now.timeIntervalSince(last) < 60 * 24 * 3600 {
+            return false
+        }
+        return true
+    }
+    
+    func markReviewPrompted() {
+        if let milestone = Self.reviewMilestones.last(where: { profile.wins >= $0 }) {
+            profile.lastReviewMilestone = milestone
+        }
+        profile.lastReviewRequest = .now
+        save()
+        Analytics.reviewPrompted(milestone: profile.lastReviewMilestone)
     }
 
     // MARK: - Daily rewards

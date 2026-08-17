@@ -8,6 +8,7 @@ struct SettingsView: View {
     @AppStorage("soundEnabled") private var soundEnabled = true
     @AppStorage("musicEnabled") private var musicEnabled = true
     @AppStorage("debugAllShots") private var debugAllShots = false
+    @AppStorage("debugAllOpponents") private var debugAllOpponents = false
     @AppStorage("analyticsEnabled") private var analyticsEnabled = true
     @State private var confirmReset = false
     @State private var showShop = false
@@ -17,6 +18,9 @@ struct SettingsView: View {
     /// Hosted from this repo's docs/ folder via GitHub Pages. App Store
     /// Connect needs the same URL on the listing.
     private static let privacyPolicyURL: URL? = URL(string: "https://brevinb.github.io/TubPirates/privacy.html")
+    /// App Store write-review deep link (numeric Apple ID from App Store
+    /// Connect). Unlike the automatic prompt, this one always works.
+    private static let writeReviewURL: URL? = URL(string: "https://apps.apple.com/app/id6792769794?action=write-review")
 
     private var appVersion: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
@@ -68,6 +72,8 @@ struct SettingsView: View {
                     card("Developer", icon: "wrench.and.screwdriver.fill") {
                         toggleRow("Unlock every cannon", icon: "flame.fill", isOn: $debugAllShots)
                         divider
+                        toggleRow("Unlock every opponent", icon: "person.3.fill", isOn: $debugAllOpponents)
+                        divider
                         buttonRow("Add 1,000 Doubloons", icon: "plus.circle.fill") {
                             profileStore.award(coins: 1000)
                             SoundService.shared.play(.coin)
@@ -77,7 +83,7 @@ struct SettingsView: View {
                             profileStore.debugUnlockAllCosmetics()
                             SoundService.shared.play(.chest)
                         }
-                        footnote("Battles start with every special shot armed and nothing is spent from your stash. Debug builds only.")
+                        footnote("Cannons: battles start with every special shot armed and nothing is spent from your stash. Opponents: every captain is battle-able without touching ladder progress. Debug builds only.")
                     }
                     #endif
 
@@ -111,6 +117,12 @@ struct SettingsView: View {
                         buttonRow("Contact the Captain", icon: "envelope.fill") {
                             if let url = URL(string: "mailto:\(Self.supportEmail)?subject=Tub%20Pirates%20Support") {
                                 openURL(url)
+                            }
+                        }
+                        if let reviewURL = Self.writeReviewURL {
+                            divider
+                            buttonRow("Rate Tub Pirates", icon: "star.fill") {
+                                openURL(reviewURL)
                             }
                         }
                         if let policyURL = Self.privacyPolicyURL {

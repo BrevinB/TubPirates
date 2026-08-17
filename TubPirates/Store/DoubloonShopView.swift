@@ -1,3 +1,4 @@
+import StoreKit
 import SwiftUI
 
 /// The doubloon merchant: coin packs bought with real money via RevenueCat.
@@ -9,6 +10,7 @@ struct DoubloonShopView: View {
     @State private var purchasing: String?
     @State private var celebrationAmount: Int?
     @State private var purchaseError: String?
+    @State private var showCodeRedemption = false
 
     var body: some View {
         NavigationStack {
@@ -70,6 +72,10 @@ struct DoubloonShopView: View {
                         } else {
                             closedShop
                         }
+
+                        if store.isConfigured {
+                            redeemCodeCard
+                        }
                     }
                     .padding(.vertical)
                 }
@@ -81,6 +87,20 @@ struct DoubloonShopView: View {
             .task {
                 if store.isConfigured, store.packs.isEmpty, !store.isLoading {
                     await store.loadOfferings()
+                }
+                // Codes redeemed in the App Store while the app was closed
+                // land the moment the merchant opens.
+                await store.refreshPurchases()
+            }
+            .offerCodeRedemption(isPresented: $showCodeRedemption) { result in
+                guard case .success = result else { return }
+                Task {
+                    let coins = await StoreService.shared.creditAfterRedemption()
+                    guard coins > 0 else { return }
+                    SoundService.shared.play(.chest)
+                    withAnimation(.spring(duration: 0.4)) {
+                        celebrationAmount = coins
+                    }
                 }
             }
             .toolbar {
@@ -144,6 +164,42 @@ struct DoubloonShopView: View {
         .padding(.top, 20)
     }
 
+    /// Friends-and-family door: opens the system sheet for App Store offer
+    /// codes, so a code can be redeemed without leaving the app.
+    private var redeemCodeCard: some View {
+        Button {
+            showCodeRedemption = true
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "giftcard.fill")
+                    .font(.system(size: 26))
+                    .foregroundStyle(.orange)
+                    .frame(width: 44, height: 44)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Redeem a Code")
+                        .font(.system(size: 16, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.08))
+                    Text("Got a doubloon code from the captain?")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color(red: 0.55, green: 0.38, blue: 0.2))
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Color(red: 0.55, green: 0.38, blue: 0.2).opacity(0.6))
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 13)
+                    .fill(.white.opacity(0.88))
+                    .strokeBorder(Color.orange.opacity(0.6), lineWidth: 2)
+                    .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
+            )
+            .padding(.horizontal, 20)
+        }
+        .buttonStyle(.plain)
+    }
+
     private func packCard(_ pack: CoinPack) -> some View {
         Button {
             guard purchasing == nil else { return }
@@ -151,7 +207,8 @@ struct DoubloonShopView: View {
             Task {
                 switch await StoreService.shared.purchase(pack) {
                 case .success(let coins):
-                    profileStore.award(coins: coins)
+                    // The coins themselves land via StoreService's ledger →
+                    // ProfileStore wiring; this is just the fanfare.
                     SoundService.shared.play(.chest)
                     withAnimation(.spring(duration: 0.4)) {
                         celebrationAmount = coins

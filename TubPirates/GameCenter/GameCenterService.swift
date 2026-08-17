@@ -123,6 +123,8 @@ final class GameCenterService: NSObject {
             let next = match.participants.filter {
                 $0.player?.gamePlayerID != GKLocalPlayer.local.gamePlayerID
             }
+            // Plain text, not a loc-key (Game Center pushes resolve keys unreliably).
+            match.message = "🏳️ \(GKLocalPlayer.local.alias) abandoned ship — victory is yours!"
             try? await match.participantQuitInTurn(
                 with: .quit,
                 nextParticipants: next,
@@ -192,6 +194,7 @@ extension GameCenterService: GKLocalPlayerListener {
                 let next = match.participants.filter {
                     $0.player?.gamePlayerID != GKLocalPlayer.local.gamePlayerID
                 }
+                match.message = "🏳️ \(GKLocalPlayer.local.alias) abandoned ship — victory is yours!"
                 try? await match.participantQuitInTurn(
                     with: .quit,
                     nextParticipants: next,

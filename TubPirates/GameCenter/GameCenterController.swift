@@ -5,8 +5,12 @@ import BathtubEngine
 /// surfaces the opponent's moves from turn events — the third OpponentController.
 @MainActor
 final class GameCenterController: OpponentController {
-    let match: GKTurnBasedMatch
+    private(set) var match: GKTurnBasedMatch
     let localPlayer: PlayerID
+
+    /// The server says it's no longer our turn (a retried submit that already
+    /// landed, or the turn moved on) — surfaced as a retryable send failure.
+    struct TurnMovedOn: Error {}
 
     /// How many moves of the shared log we've already seen/applied locally.
     private var knownMoveCount = 0
@@ -61,14 +65,17 @@ final class GameCenterController: OpponentController {
             $0.player?.gamePlayerID != GKLocalPlayer.local.gamePlayerID
         }
         guard !others.isEmpty else { return }
-        // TAUNT_PUSH lives in Localizable.xcstrings — Game Center resolves the
-        // key in the RECEIVER's bundle; an unknown key falls back to the
-        // generic "An action was completed."
+        // Exchanges only take a localizable "key", and Game Center's push-side
+        // lookup of it in the receiver's bundle proved unreliable (banners
+        // showed the literal "TAUNT_PUSH"). A key that doesn't resolve is
+        // displayed verbatim — so pass the finished text AS the key and the
+        // banner always reads correctly. The receiver's in-app chat ignores
+        // this and validates the raw `data` payload instead.
         try? await match.sendExchange(
             to: others,
             data: Data(message.utf8),
-            localizableMessageKey: "TAUNT_PUSH",
-            arguments: [message],
+            localizableMessageKey: "💬 \(GKLocalPlayer.local.alias): \(message)",
+            arguments: [],
             timeout: 60
         )
     }
@@ -83,7 +90,8 @@ final class GameCenterController: OpponentController {
             onTaunt?(message)
         }
         Task {
-            try? await exchange.reply(withLocalizableMessageKey: "TAUNT_SEEN", arguments: [], data: Data())
+            // Literal text, not a catalog key — see sendInstantTaunt.
+            try? await exchange.reply(withLocalizableMessageKey: "Message delivered", arguments: [], data: Data())
         }
     }
 
@@ -148,7 +156,10 @@ final class GameCenterController: OpponentController {
             data.state = GameState(boards: [.one: one, .two: two], loadouts: [.one: arsenal, .two: arsenal])
         }
 
-        try await endTurn(with: data)
+        let name = GKLocalPlayer.local.alias
+        try await endTurn(with: data, pushMessage: data.state == nil
+            ? "⚓️ \(name) set their fleet — place yours to start the battle!"
+            : "🏴‍☠️ \(name)'s fleet is in the tub — the battle begins!")
         if let state = data.state { markKnown(state: state) }
         return data
     }
@@ -156,8 +167,10 @@ final class GameCenterController: OpponentController {
     // MARK: - Turn submission
 
     /// Sends the local player's applied move (and resulting state) to the
-    /// opponent, with an optional canned taunt riding along.
-    func submitLocalTurn(state: GameState, taunt: String? = nil) async throws {
+    /// opponent, with an optional canned taunt riding along. `pushMessage` is
+    /// the plain-text notification the rival receives (defaults to Game
+    /// Center's generic "It's your turn" when nil).
+    func submitLocalTurn(state: GameState, taunt: String? = nil, pushMessage: String? = nil) async throws {
         guard var data = MatchDataCodec.decode(try await match.loadMatchData()) else {
             throw MatchDataCodec.CorruptMatchData()
         }
@@ -170,22 +183,82 @@ final class GameCenterController: OpponentController {
         markKnown(state: state)
 
         if case .finished(let winner) = state.phase {
-            for (index, participant) in match.participants.enumerated() {
-                let seat = MatchDataCodec.player(forParticipantIndex: index)
-                participant.matchOutcome = seat == winner ? .won : .lost
-            }
-            await settleExchanges(with: try MatchDataCodec.encode(data))
-            try await match.endMatchInTurn(withMatch: MatchDataCodec.encode(data))
+            try await endMatchOnServer(with: try MatchDataCodec.encode(data), winner: winner, pushMessage: pushMessage)
         } else {
-            try await endTurn(with: data)
+            try await endTurn(with: data, pushMessage: pushMessage)
         }
     }
 
-    private func endTurn(with data: OnlineMatchData) async throws {
+    /// Ends the Game Center match after a winning move — shared by the live
+    /// submit and the reopened-match recovery below.
+    private func endMatchOnServer(with encoded: Data, winner: PlayerID, pushMessage: String? = nil) async throws {
+        // endMatchInTurn raises an ObjC exception (uncatchable from Swift)
+        // if the match already ended or the turn moved on — re-check the
+        // authoritative server state first.
+        match = try await GKTurnBasedMatch.load(withID: match.matchID)
+        guard match.status != .ended else { return }
+        guard match.currentParticipant?.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID else {
+            throw TurnMovedOn()
+        }
+        for (index, participant) in match.participants.enumerated() {
+            let seat = MatchDataCodec.player(forParticipantIndex: index)
+            participant.matchOutcome = seat == winner ? .won : .lost
+        }
+        // Plain text (not a localizable key) — set on the freshly reloaded
+        // instance so it rides along with the ending.
+        if let pushMessage { match.message = pushMessage }
+        // A still-active taunt exchange blocks endMatchInTurn exactly like it
+        // blocks endTurn. Unlike a mid-game turn (where we only cancel after a
+        // failure, to keep the taunt's push alive), the match is over — clear
+        // ours up front instead of failing into it. The taunt itself survives
+        // in the match data.
+        await cancelLocalActiveExchanges()
+        await settleExchanges(with: encoded)
+        do {
+            try await match.endMatchInTurn(withMatch: encoded)
+        } catch {
+            // A rival exchange resolving (or arriving) in the window above can
+            // still block — clear again and retry once.
+            await cancelLocalActiveExchanges()
+            try await match.endMatchInTurn(withMatch: encoded)
+        }
+    }
+
+    /// Heals a match the server still thinks is live after the game itself
+    /// finished: if the winning device died before endMatchInTurn landed, the
+    /// match sits on "your turn" forever. Called whenever an already-finished
+    /// online match is (re)opened; quietly re-runs the ending when this
+    /// participant still holds the turn, and no-ops otherwise.
+    func finalizeFinishedMatchIfNeeded(state: GameState) async {
+        guard case .finished = state.phase else { return }
+        guard match.status != .ended,
+              match.currentParticipant?.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID
+        else { return }
+        // submitLocalTurn re-syncs the final state into the match data and
+        // runs the end-match path above (which re-checks server truth).
+        // Holding the turn of a finished game means the local player won.
+        try? await submitLocalTurn(
+            state: state,
+            pushMessage: "☠️ \(GKLocalPlayer.local.alias) sank your fleet — the battle is lost!"
+        )
+    }
+
+    private func endTurn(with data: OnlineMatchData, pushMessage: String? = nil) async throws {
+        let encoded = try MatchDataCodec.encode(data)
+        // Same uncatchable-exception hazard as endMatchInTurn: only the
+        // current participant of a live match may end a turn.
+        match = try await GKTurnBasedMatch.load(withID: match.matchID)
+        guard match.status != .ended else { return }
+        guard match.currentParticipant?.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID else {
+            throw TurnMovedOn()
+        }
+        // The rival's turn notification. Plain text sidesteps the loc-key
+        // lookup that Game Center pushes resolve unreliably; nil keeps the
+        // stock "It's your turn."
+        if let pushMessage { match.message = pushMessage }
         let next = match.participants.filter {
             $0.player?.gamePlayerID != GKLocalPlayer.local.gamePlayerID
         }
-        let encoded = try MatchDataCodec.encode(data)
         await settleExchanges(with: encoded)
         do {
             try await match.endTurn(
@@ -196,15 +269,23 @@ final class GameCenterController: OpponentController {
         } catch {
             // A still-pending chat exchange (rival offline, not yet timed
             // out) can block the turn — cancel ours and retry once.
-            for exchange in match.activeExchanges ?? []
-            where exchange.sender.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID {
-                try? await exchange.cancel(withLocalizableMessageKey: "TAUNT_SEEN", arguments: [])
-            }
+            await cancelLocalActiveExchanges()
             try await match.endTurn(
                 withNextParticipants: next,
                 turnTimeout: GKTurnTimeoutDefault,
                 match: encoded
             )
+        }
+    }
+
+    /// Cancels every still-active exchange the local player sent (the rival
+    /// hasn't acknowledged the taunt yet) — GameKit refuses to end a turn or
+    /// a match while they're pending.
+    private func cancelLocalActiveExchanges() async {
+        for exchange in match.activeExchanges ?? []
+        where exchange.sender.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID {
+            // Literal text, not a catalog key — see sendInstantTaunt.
+            try? await exchange.cancel(withLocalizableMessageKey: "Message delivered", arguments: [])
         }
     }
 
@@ -245,6 +326,9 @@ final class GameCenterController: OpponentController {
 
     /// Called by GameCenterService when Game Center delivers updated match data.
     func handleTurnEvent(_ updatedMatch: GKTurnBasedMatch) {
+        // Keep our stored match current — the original instance goes stale
+        // as turns advance.
+        match = updatedMatch
         // Opponent quit or timed out → hand the win to the local player.
         let localID: String = GKLocalPlayer.local.gamePlayerID
         var opponentQuit = false

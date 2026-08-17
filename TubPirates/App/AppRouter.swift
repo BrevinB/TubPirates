@@ -62,11 +62,25 @@ struct RootView: View {
             SoundService.shared.warmUp()
             SoundService.shared.startMusic()
             Analytics.start()
+            // Wire crediting before configure: the launch-time reconcile can
+            // grant coins (e.g. an offer code redeemed while the app was
+            // closed), and those must land in the profile.
+            StoreService.shared.onCoinsCredited = { coins in
+                profileStore.award(coins: coins)
+            }
             StoreService.shared.configureIfPossible()
-            gameCenter.authenticate()
             #if DEBUG
+            // Staged headless runs (-autoBattle / -screen) skip Game Center
+            // auth: on a signed-out simulator the sign-in sheet would cover
+            // the very scene the run is trying to capture.
+            let staged = CommandLine.arguments.contains("-autoBattle")
+                || CommandLine.arguments.contains("-screen")
+            if !staged {
+                gameCenter.authenticate()
+            }
             handleDebugLaunchArguments()
             #else
+            gameCenter.authenticate()
             if !profileStore.hasSeenWelcome {
                 showWelcome = true
             }

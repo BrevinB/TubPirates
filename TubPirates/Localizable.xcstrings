@@ -186,6 +186,12 @@
         }
       }
     },
+    "Discard Battle" : {
+
+    },
+    "Discard the saved battle?" : {
+
+    },
     "Done" : {
 
     },
@@ -231,6 +237,9 @@
     "Fleet ready, Captain! ⚓️" : {
 
     },
+    "Forfeit Battle" : {
+
+    },
     "Hand the device to %@.\nNo peeking at the other fleet!" : {
 
     },
@@ -246,7 +255,13 @@
     "Keep Fighting" : {
 
     },
+    "Keep It" : {
+
+    },
     "Leave" : {
+
+    },
+    "Leave saves your battle for later — forfeit throws it away." : {
 
     },
     "Leave the battle?" : {
@@ -397,6 +412,9 @@
     "The tub is yours, Captain!" : {
 
     },
+    "The unfinished battle will be gone for good." : {
+
+    },
     "Their fleet, revealed!" : {
 
     },
@@ -442,10 +460,10 @@
     "You can rejoin any time from Online Battle." : {
 
     },
-    "You say: %@" : {
+    "You can restart the tutorial from the main menu." : {
 
     },
-    "Your battle is saved — resume it from the main menu." : {
+    "You say: %@" : {
 
     },
     "YOUR TURN" : {

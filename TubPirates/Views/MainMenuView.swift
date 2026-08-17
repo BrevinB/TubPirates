@@ -7,6 +7,7 @@ struct MainMenuView: View {
     @Environment(ProfileStore.self) private var profileStore
     @State private var showAvatarPicker = false
     @State private var hasSavedMatch = MatchSaveStore.hasSave
+    @State private var confirmDiscard = false
     @State private var claimedChestAmount: Int?
     @State private var showDoubloonShop = false
     @State private var showGameCenterDashboard = false
@@ -27,7 +28,6 @@ struct MainMenuView: View {
     }
 
     /// Drives the gentle floating rock of the title.
-    @State private var titleBob = false
 
     var body: some View {
         ZStack {
@@ -73,11 +73,17 @@ struct MainMenuView: View {
                         .foregroundStyle(Color(red: 0.2, green: 0.4, blue: 0.6))
                         .shadow(color: .white.opacity(0.8), radius: 3)
                 }
-                // Bob like a toy on the water.
-                .rotationEffect(.degrees(titleBob ? 1.6 : -1.6))
-                .offset(y: titleBob ? -3 : 3)
-                .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: titleBob)
-                .onAppear { titleBob = true }
+                // Bob like a toy on the water. phaseAnimator keeps the
+                // animation scoped to these effects — a plain .animation +
+                // onAppear toggle let the menu's first layout pass ride the
+                // repeatForever curve, flying the title in from the corner.
+                .phaseAnimator([false, true]) { content, bob in
+                    content
+                        .rotationEffect(.degrees(bob ? 1.6 : -1.6))
+                        .offset(y: bob ? -3 : 3)
+                } animation: { _ in
+                    .easeInOut(duration: 2.6)
+                }
 
                 Spacer(minLength: 8)
 
@@ -85,13 +91,39 @@ struct MainMenuView: View {
 
                 VStack(spacing: 11) {
                     if hasSavedMatch {
-                        menuButton("Resume Battle", icon: "play.fill", tint: .green) {
-                            path.append(.match(MatchConfig(
-                                mode: .ai,
-                                loadout: battleLoadout,
-                                consumesInventory: !debugAllShots,
-                                resume: true
-                            )))
+                        HStack(spacing: 8) {
+                            menuButton("Resume Battle", icon: "play.fill", tint: .green) {
+                                path.append(.match(MatchConfig(
+                                    mode: .ai,
+                                    loadout: battleLoadout,
+                                    consumesInventory: !debugAllShots,
+                                    resume: true
+                                )))
+                            }
+                            Button {
+                                SoundService.shared.play(.tap)
+                                confirmDiscard = true
+                            } label: {
+                                Image(systemName: "trash.fill")
+                                    .font(.headline.weight(.bold))
+                                    .padding(.vertical, 5)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.red)
+                        }
+                        .frame(maxWidth: 300)
+                        .confirmationDialog(
+                            "Discard the saved battle?",
+                            isPresented: $confirmDiscard,
+                            titleVisibility: .visible
+                        ) {
+                            Button("Discard Battle", role: .destructive) {
+                                MatchSaveStore.clear()
+                                hasSavedMatch = false
+                            }
+                            Button("Keep It", role: .cancel) {}
+                        } message: {
+                            Text("The unfinished battle will be gone for good.")
                         }
                     }
                     menuButton("Battle!", icon: "flag.checkered", tint: .orange) {

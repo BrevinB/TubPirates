@@ -1,6 +1,30 @@
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode user state
 xcuserdata/
 *.xcuserstate
-.build/
-DerivedData/
+*.xcscmblueprint
+*.xccheckout
+
+# Xcode build products
 build/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+# (Package.resolved stays tracked so builds are reproducible)
+.build/
+.swiftpm/
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Marketing & store assets (big binaries; kept locally, not in the repo)
+marketing/
+screenshots/

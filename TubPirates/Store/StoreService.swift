@@ -19,7 +19,7 @@ struct CoinPack: Identifiable {
 /// untouched. Paste the key and the store lights up.
 @MainActor
 @Observable
-final class StoreService {
+final class StoreService: NSObject {
     static let shared = StoreService()
 
     /// RevenueCat public Apple API key (starts with `appl_`). Leave empty to
@@ -55,15 +55,27 @@ final class StoreService {
         case failed(message: String)
     }
 
-    private init() {}
+    /// Called with the doubloon total each time new purchases are credited
+    /// (wired to ProfileStore.award at app start). Kept as a callback so this
+    /// singleton never has to reach into the SwiftUI environment.
+    var onCoinsCredited: ((Int) -> Void)?
+
+    private override init() {}
 
     /// Call once at app start. No-ops without an API key.
     func configureIfPossible() {
         guard !isConfigured, !Self.apiKey.isEmpty else { return }
         Purchases.logLevel = .warn
         Purchases.configure(withAPIKey: Self.apiKey)
+        Purchases.shared.delegate = self
         isConfigured = true
-        Task { await loadOfferings() }
+        Task {
+            await loadOfferings()
+            // Pick up purchases the shop's buy flow never saw: offer codes
+            // redeemed in the App Store, or purchases that completed after
+            // a crash mid-flow.
+            await refreshPurchases()
+        }
     }
 
     func loadOfferings() async {
@@ -100,9 +112,71 @@ final class StoreService {
         do {
             let result = try await Purchases.shared.purchase(package: pack.package)
             guard !result.userCancelled else { return .cancelled }
+            // Crediting flows through the ledger like every other path, so a
+            // delegate echo of this same transaction can't double-pay it.
+            credit(from: result.customerInfo)
             return .success(coins: pack.coins)
         } catch {
             return .failed(message: error.localizedDescription)
+        }
+    }
+
+    // MARK: - Crediting (all purchase paths funnel through here)
+
+    /// Transaction IDs already paid out, persisted outside the profile so
+    /// "Reset Profile" can't re-credit old purchases.
+    private static let creditedLedgerKey = "creditedStoreTransactionIDs"
+
+    private var creditedTransactionIDs: Set<String> {
+        get { Set(UserDefaults.standard.stringArray(forKey: Self.creditedLedgerKey) ?? []) }
+        set { UserDefaults.standard.set(Array(newValue), forKey: Self.creditedLedgerKey) }
+    }
+
+    /// Pays out any doubloon purchase RevenueCat knows about that the ledger
+    /// hasn't seen — the shop's own buys, App Store offer-code redemptions,
+    /// whatever. Returns the doubloons granted (0 when nothing was new).
+    @discardableResult
+    private func credit(from info: CustomerInfo) -> Int {
+        var credited = creditedTransactionIDs
+        var granted = 0
+        for transaction in info.nonSubscriptions {
+            guard let coins = Self.coinAmounts[transaction.productIdentifier],
+                  !credited.contains(transaction.transactionIdentifier)
+            else { continue }
+            credited.insert(transaction.transactionIdentifier)
+            granted += coins
+        }
+        guard granted > 0 else { return 0 }
+        creditedTransactionIDs = credited
+        onCoinsCredited?(granted)
+        return granted
+    }
+
+    /// Reconciles against RevenueCat's latest record of this user.
+    func refreshPurchases() async {
+        guard isConfigured else { return }
+        guard let info = try? await Purchases.shared.customerInfo(fetchPolicy: .fetchCurrent) else { return }
+        credit(from: info)
+    }
+
+    /// After the in-app redemption sheet closes: force a receipt sync so the
+    /// just-redeemed code is visible immediately, then credit it. Returns the
+    /// doubloons granted so the shop can celebrate with the right number.
+    func creditAfterRedemption() async -> Int {
+        guard isConfigured else { return 0 }
+        guard let info = try? await Purchases.shared.syncPurchases() else { return 0 }
+        return credit(from: info)
+    }
+}
+
+// MARK: - RevenueCat delegate
+
+extension StoreService: PurchasesDelegate {
+    /// Fires whenever RevenueCat learns of new transactions — including ones
+    /// that happened entirely outside the app (App Store code redemption).
+    nonisolated func purchases(_ purchases: Purchases, receivedUpdated customerInfo: CustomerInfo) {
+        Task { @MainActor in
+            self.credit(from: customerInfo)
         }
     }
 }
