@@ -75,6 +75,7 @@ struct RootView: View {
             // the very scene the run is trying to capture.
             let staged = CommandLine.arguments.contains("-autoBattle")
                 || CommandLine.arguments.contains("-screen")
+                || CommandLine.arguments.contains("-records")
             if !staged {
                 gameCenter.authenticate()
             }

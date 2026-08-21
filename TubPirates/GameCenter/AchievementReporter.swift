@@ -80,27 +80,3 @@ enum AchievementReporter {
     }
 }
 
-/// The native Game Center dashboard (achievements + leaderboards),
-/// presented as a sheet from the menu's record chip.
-struct GameCenterDashboardView: UIViewControllerRepresentable {
-    @Environment(\.dismiss) private var dismiss
-
-    func makeUIViewController(context: Context) -> GKGameCenterViewController {
-        let controller = GKGameCenterViewController(state: .achievements)
-        controller.gameCenterDelegate = context.coordinator
-        return controller
-    }
-
-    func updateUIViewController(_ uiViewController: GKGameCenterViewController, context: Context) {}
-
-    func makeCoordinator() -> Coordinator { Coordinator(dismiss: dismiss) }
-
-    final class Coordinator: NSObject, GKGameCenterControllerDelegate {
-        let dismiss: DismissAction
-        init(dismiss: DismissAction) { self.dismiss = dismiss }
-
-        func gameCenterViewControllerDidFinish(_ gameCenterViewController: GKGameCenterViewController) {
-            dismiss()
-        }
-    }
-}

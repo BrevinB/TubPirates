@@ -49,6 +49,16 @@
     "%lld doubloons" : {
 
     },
+    "%lld of %lld trophies claimed — %lld points" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld trophies claimed — %3$lld points"
+          }
+        }
+      }
+    },
     "%lldW – %lldL" : {
       "localizations" : {
         "en" : {
@@ -58,6 +68,9 @@
           }
         }
       }
+    },
+    "+%lld" : {
+
     },
     "+%lld doubloons — welcome aboard!" : {
 
@@ -238,6 +251,9 @@
 
     },
     "Got a doubloon code from the captain?" : {
+
+    },
+    "Hall o' Fame" : {
 
     },
     "Hand the device to %@.\nNo peeking at the other fleet!" : {

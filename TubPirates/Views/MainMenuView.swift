@@ -193,8 +193,15 @@ struct MainMenuView: View {
             DoubloonShopView()
         }
         .sheet(isPresented: $showGameCenterDashboard) {
-            GameCenterDashboardView()
-                .ignoresSafeArea()
+            HallOfFameView()
+        }
+        .task {
+            #if DEBUG
+            // Screenshot staging: -records opens the Hall o' Fame sheet.
+            if CommandLine.arguments.contains("-records") {
+                showGameCenterDashboard = true
+            }
+            #endif
         }
     }
 
