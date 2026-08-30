@@ -198,9 +198,9 @@ final class MatchViewModel {
         if let name = Self.debugEnemyName, player != localPlayer { return name }
         #endif
         switch mode {
-        case .ai: return player == localPlayer ? "You" : captain.name
-        case .passAndPlay: return player == .one ? "Captain 1" : "Captain 2"
-        case .gameCenter: return player == localPlayer ? "You" : (onlineOpponentName ?? "Opponent")
+        case .ai: return player == localPlayer ? String(localized: "You") : captain.localizedName
+        case .passAndPlay: return player == .one ? String(localized: "Captain 1") : String(localized: "Captain 2")
+        case .gameCenter: return player == localPlayer ? String(localized: "You") : (onlineOpponentName ?? String(localized: "Opponent"))
         }
     }
 
@@ -219,25 +219,25 @@ final class MatchViewModel {
     var statusText: String {
         switch turnState {
         case .playerTargeting:
-            mode == .passAndPlay ? "\(displayName(for: activePlayer)) — fire!" : "Your turn — fire!"
-        case .resolvingPlayerShot: isCatchingUp ? "While ye were away..." : "Firing..."
+            mode == .passAndPlay ? String(localized: "\(displayName(for: activePlayer)) — fire!") : String(localized: "Your turn — fire!")
+        case .resolvingPlayerShot: isCatchingUp ? String(localized: "While ye were away...") : String(localized: "Firing...")
         case .opponentThinking:
-            mode == .ai ? "\(captain.name) is aiming..." : "\(displayName(for: localPlayer.opponent)) is aiming..."
-        case .resolvingOpponentShot: isCatchingUp ? "While ye were away..." : "Incoming!"
-        case .submitFailed: "Yer shot couldn't reach the rival!"
-        case .awaitingHandoff: "Pass the tub..."
+            mode == .ai ? String(localized: "\(captain.localizedName) is aiming...") : String(localized: "\(displayName(for: localPlayer.opponent)) is aiming...")
+        case .resolvingOpponentShot: isCatchingUp ? String(localized: "While ye were away...") : String(localized: "Incoming!")
+        case .submitFailed: String(localized: "Yer shot couldn't reach the rival!")
+        case .awaitingHandoff: String(localized: "Pass the tub...")
         case .finished(let winner):
             mode == .passAndPlay
-                ? "\(displayName(for: winner)) wins!"
-                : (winner == localPlayer ? "Victory!" : "Defeat!")
+                ? String(localized: "\(displayName(for: winner)) wins!")
+                : (winner == localPlayer ? String(localized: "Victory!") : String(localized: "Defeat!"))
         }
     }
 
     var endTitle: String {
         guard case .finished(let winner) = turnState else { return "" }
         return mode == .passAndPlay
-            ? "\(displayName(for: winner)) Wins!"
-            : (winner == localPlayer ? "Victory!" : "Sunk!")
+            ? String(localized: "\(displayName(for: winner)) Wins!")
+            : (winner == localPlayer ? String(localized: "Victory!") : String(localized: "Sunk!"))
     }
 
     var endMessage: String {
@@ -245,15 +245,15 @@ final class MatchViewModel {
         switch mode {
         case .ai:
             return winner == localPlayer
-                ? "\(captain.name)'s fleet rests at the bottom of the tub."
-                : "\(captain.name) cackles as your last ship goes under."
+                ? String(localized: "\(captain.localizedName)'s fleet rests at the bottom of the tub.")
+                : String(localized: "\(captain.localizedName) cackles as your last ship goes under.")
         case .passAndPlay:
-            return "\(displayName(for: winner.opponent))'s fleet rests at the bottom of the tub."
+            return String(localized: "\(displayName(for: winner.opponent))'s fleet rests at the bottom of the tub.")
         case .gameCenter:
-            let rival = onlineOpponentName ?? "Yer rival"
+            let rival = onlineOpponentName ?? String(localized: "Yer rival")
             return winner == localPlayer
-                ? "\(rival)'s fleet rests at the bottom of the tub."
-                : "\(rival) sent yer last ship to the drain."
+                ? String(localized: "\(rival)'s fleet rests at the bottom of the tub.")
+                : String(localized: "\(rival) sent yer last ship to the drain.")
         }
     }
 
@@ -777,18 +777,18 @@ final class MatchViewModel {
     private static func turnPushMessage(for resolution: MoveResolution) -> String {
         let name = GKLocalPlayer.local.alias
         if resolution.winner != nil {
-            return "☠️ \(name) sank your fleet — the battle is lost!"
+            return String(localized: "☠️ \(name) sank your fleet — the battle is lost!")
         }
         if let sunk = resolution.sunkShips.first {
-            return "🔥 \(name) sank your \(sunk.kind.displayName)! Your move, Captain."
+            return String(localized: "🔥 \(name) sank your \(sunk.kind.localizedDisplayName)! Your move, Captain.")
         }
         if resolution.move.shot.spec.effect != .damage {
-            return "🔭 \(name) scouted your waters — your move, Captain!"
+            return String(localized: "🔭 \(name) scouted your waters — your move, Captain!")
         }
         if resolution.cellResults.contains(where: { $0.outcome == .hit }) {
-            return "💥 \(name) hit your fleet — your move, Captain!"
+            return String(localized: "💥 \(name) hit your fleet — your move, Captain!")
         }
-        return "🌊 \(name)'s shot splashed into the tub — your move, Captain!"
+        return String(localized: "🌊 \(name)'s shot splashed into the tub — your move, Captain!")
     }
 
     /// Retry a send that failed (the "no wind in the sails" banner's button).

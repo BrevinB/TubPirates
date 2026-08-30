@@ -242,7 +242,7 @@ private struct MatchContentView: View {
                         banners.append(UnlockBanner(
                             icon: captain.portrait,
                             kicker: "NEW RIVAL UNLOCKED",
-                            title: captain.name
+                            title: captain.localizedName
                         ))
                     }
                     for shot in ShotType.purchasable
@@ -250,7 +250,7 @@ private struct MatchContentView: View {
                         banners.append(UnlockBanner(
                             icon: ShotPanelView.iconName(for: shot),
                             kicker: "NEW IN THE ARMORY",
-                            title: shot.spec.displayName
+                            title: shot.localizedDisplayName
                         ))
                     }
                     for fleet in FleetSkin.all
@@ -258,7 +258,7 @@ private struct MatchContentView: View {
                         banners.append(UnlockBanner(
                             icon: fleet.previewTextures.first ?? "ship_5",
                             kicker: "TROPHY EARNED",
-                            title: fleet.name
+                            title: fleet.localizedName
                         ))
                     }
                     for avatar in Avatar.all

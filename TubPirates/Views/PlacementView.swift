@@ -383,7 +383,7 @@ struct PlacementView: View {
             .frame(minWidth: 44, minHeight: 56)
             .contentShape(Rectangle())
             .gesture(trayDrag(kind))
-            .accessibilityLabel(kind.displayName)
+            .accessibilityLabel(kind.localizedDisplayName)
     }
 }
 

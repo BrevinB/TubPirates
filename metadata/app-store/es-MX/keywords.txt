@@ -1,0 +1,1 @@
+barcos,batalla naval,estrategia,piratas,duelo,flota,online,local

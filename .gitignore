@@ -28,3 +28,8 @@ playground.xcworkspace
 # Marketing & store assets (big binaries; kept locally, not in the repo)
 marketing/
 screenshots/
+
+# Local credentials
+.env
+.env.*
+AuthKey_*.p8

@@ -1,6 +1,15 @@
 {
-  "originHash" : "6373c5fc478e60729d64d7d8380420f8f606228c3b77fbcf6e08bffa42ec5d5f",
+  "originHash" : "fad2e6b0d1fe27b3873649ec43028bd6905bdbe85d4f822666bf9f0bf69a32ae",
   "pins" : [
+    {
+      "identity" : "kickstartsdk",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/twostraws/KickstartSDK",
+      "state" : {
+        "revision" : "36f475be3e28e335d5c8733e08cef15e7cf774b9",
+        "version" : "0.5.0"
+      }
+    },
     {
       "identity" : "purchases-ios",
       "kind" : "remoteSourceControl",

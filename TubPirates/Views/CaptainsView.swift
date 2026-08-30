@@ -70,12 +70,12 @@ struct CaptainsView: View {
 
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 6) {
-                        Text(captain.name)
+                        Text(captain.localizedName)
                             .font(.system(size: 19, weight: .heavy, design: .rounded))
                             .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.08))
                         difficultyStars(captain.tier)
                     }
-                    Text(captain.blurb)
+                    Text(captain.localizedBlurb)
                         .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                         .foregroundStyle(Color(red: 0.45, green: 0.3, blue: 0.15))
                         .fixedSize(horizontal: false, vertical: true)
@@ -109,7 +109,7 @@ struct CaptainsView: View {
                         }
                     } else if let index = Captain.roster.firstIndex(of: captain), index > 0 {
                         let previous = Captain.roster[index - 1]
-                        Text("Defeat \(previous.name) ×\(previous.winsToAdvance) to unlock")
+                        Text("Defeat \(previous.localizedName) ×\(previous.winsToAdvance) to unlock")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundStyle(.orange)
                     }
@@ -143,8 +143,8 @@ struct CaptainsView: View {
         .buttonStyle(.plain)
         .disabled(!unlocked)
         .accessibilityLabel(unlocked
-            ? "\(captain.name), \(wins) wins"
-            : "\(captain.name), locked")
+            ? String(localized: "\(captain.localizedName), \(wins) wins")
+            : String(localized: "\(captain.localizedName), locked"))
     }
 
     private func difficultyStars(_ tier: Int) -> some View {
@@ -174,12 +174,12 @@ struct CaptainsView: View {
     private func progressCaption(for captain: Captain, wins: Int) -> (String, Color)? {
         let done = wins >= captain.winsToAdvance
         if captain.next != nil {
-            return done ? ("Next rival unlocked!", .green) : nil
+            return done ? (String(localized: "Next rival unlocked!"), .green) : nil
         }
         // Final rung: the ladder-champion trophy.
         return done
-            ? ("The Gilded Armada is yours!", .green)
-            : ("Win ×\(captain.winsToAdvance) to claim the Gilded Armada fleet", Color(red: 0.72, green: 0.5, blue: 0.12))
+            ? (String(localized: "The Gilded Armada is yours!"), .green)
+            : (String(localized: "Win ×\(captain.winsToAdvance) to claim the Gilded Armada fleet"), Color(red: 0.72, green: 0.5, blue: 0.12))
     }
 }
 

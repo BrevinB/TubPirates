@@ -1,0 +1,1 @@
+Localized the app and App Store screenshots for Spanish, French, German, Brazilian Portuguese, Japanese, and Simplified Chinese.

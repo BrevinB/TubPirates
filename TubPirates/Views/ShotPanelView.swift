@@ -51,10 +51,10 @@ struct ShotPanelView: View {
             Button("Fire!") { viewModel.fireFlare() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text(ShotType.flare.spec.blurb)
+            Text(ShotType.flare.localizedBlurb)
         }
         .confirmationDialog(
-            pendingPurchase.map { "Buy \($0.spec.displayName) for \($0.spec.coinCost) doubloons?" } ?? "",
+            pendingPurchase.map { String(localized: "Buy \($0.localizedDisplayName) for \($0.spec.coinCost) doubloons?") } ?? "",
             isPresented: Binding(
                 get: { pendingPurchase != nil },
                 set: { if !$0 { pendingPurchase = nil } }
@@ -158,7 +158,7 @@ struct ShotPanelView: View {
                 tooltipShot = tooltipShot == shot ? nil : shot
             }
         )
-        .accessibilityLabel(shot.spec.displayName)
+        .accessibilityLabel(shot.localizedDisplayName)
     }
 
     private var orientationButton: some View {
@@ -178,15 +178,15 @@ struct ShotPanelView: View {
 
     private func tooltip(for shot: ShotType) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(shot.spec.displayName)
+            Text(shot.localizedDisplayName)
                 .font(.system(size: 14, weight: .heavy, design: .rounded))
                 .foregroundStyle(Color(red: 0.5, green: 0.15, blue: 0.1))
-            Text(shot.spec.blurb)
+            Text(shot.localizedBlurb)
                 .font(.system(size: 12, weight: .medium, design: .rounded))
                 .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.05))
             if !profileStore.isShotInStock(shot),
                let requirement = profileStore.armoryRequirement(for: shot) {
-                Label("Defeat \(requirement.name) ×\(requirement.winsToAdvance) to unlock",
+                Label("Defeat \(requirement.localizedName) ×\(requirement.winsToAdvance) to unlock",
                       systemImage: "lock.fill")
                     .font(.system(size: 12, weight: .bold, design: .rounded))
                     .foregroundStyle(Color(red: 0.7, green: 0.4, blue: 0.1))

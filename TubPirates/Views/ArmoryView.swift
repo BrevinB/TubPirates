@@ -63,7 +63,7 @@ struct ArmoryView: View {
             }
         }
         .confirmationDialog(
-            pendingFleet.map { "Buy the \($0.name) for \($0.price) doubloons?" } ?? "",
+            pendingFleet.map { String(localized: "Buy the \($0.localizedName) for \($0.price) doubloons?") } ?? "",
             isPresented: Binding(
                 get: { pendingFleet != nil },
                 set: { if !$0 { pendingFleet = nil } }
@@ -122,13 +122,13 @@ struct ArmoryView: View {
                         .padding(5)
                         .background(Color.blue, in: Circle())
                         .offset(x: 8, y: -8)
-                }
+            }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(ShotType.cannon.spec.displayName)
+                Text(ShotType.cannon.localizedDisplayName)
                     .font(.system(size: 17, weight: .heavy, design: .rounded))
                     .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.08))
-                Text(ShotType.cannon.spec.blurb)
+                Text(ShotType.cannon.localizedBlurb)
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color(red: 0.45, green: 0.3, blue: 0.15))
             }
@@ -168,7 +168,7 @@ struct ArmoryView: View {
         } label: {
             VStack(spacing: 8) {
                 HStack(spacing: 4) {
-                    Text(fleet.name)
+                    Text(fleet.localizedName)
                         .font(.system(size: 17, weight: .heavy, design: .rounded))
                         .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.08))
                     Spacer()
@@ -183,7 +183,7 @@ struct ArmoryView: View {
                         Text("Tap to equip")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundStyle(Color(red: 0.55, green: 0.38, blue: 0.2))
-                    } else if let earnedBy = fleet.earnedBy {
+                    } else if let earnedBy = fleet.localizedEarnedBy {
                         Label(earnedBy, systemImage: "trophy.fill")
                             .font(.system(size: 11, weight: .heavy, design: .rounded))
                             .foregroundStyle(.white)
@@ -213,7 +213,7 @@ struct ArmoryView: View {
                 .frame(maxWidth: .infinity)
                 .saturation(owned ? 1 : 0.7)
 
-                Text(fleet.blurb)
+                Text(fleet.localizedBlurb)
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color(red: 0.45, green: 0.3, blue: 0.15))
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -230,7 +230,7 @@ struct ArmoryView: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(owned ? fleet.name : "\(fleet.name), \(fleet.price) doubloons")
+        .accessibilityLabel(owned ? fleet.localizedName : String(localized: "\(fleet.localizedName), \(fleet.price) doubloons"))
     }
 
     private func shotCard(_ shot: ShotType) -> some View {
@@ -266,16 +266,16 @@ struct ArmoryView: View {
                 }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(shot.spec.displayName)
+                Text(shot.localizedDisplayName)
                     .font(.system(size: 17, weight: .heavy, design: .rounded))
                     .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.08))
                 if inStock {
-                    Text(shot.spec.blurb)
+                    Text(shot.localizedBlurb)
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(Color(red: 0.45, green: 0.3, blue: 0.15))
                 } else if let requirement = profileStore.armoryRequirement(for: shot) {
                     Label(
-                        "Defeat \(requirement.name) ×\(requirement.winsToAdvance) to stock this",
+                        "Defeat \(requirement.localizedName) ×\(requirement.winsToAdvance) to stock this",
                         systemImage: "lock.fill"
                     )
                     .font(.system(size: 13, weight: .bold, design: .rounded))

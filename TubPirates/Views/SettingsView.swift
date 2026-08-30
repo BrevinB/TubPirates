@@ -1,4 +1,5 @@
 import SwiftUI
+import KickstartExchange
 
 struct SettingsView: View {
     @Binding var path: [Route]
@@ -146,6 +147,8 @@ struct SettingsView: View {
                         }
                         footnote("Clears doubloons, your shot stash, and your battle record.")
                     }
+                    
+                    ExchangeBannerAdView(apiKey: "ks_live_82pAECrhniIaQ46wnhFXwvEgu-dupbU4c5KQHX69xQ4")
                 }
                 .padding()
                 .contentColumn()
