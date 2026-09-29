@@ -1,3 +1,4 @@
+import BathtubArena
 import Foundation
 import Observation
 import BathtubEngine
@@ -21,6 +22,9 @@ final class ProfileStore {
         }
         // Trophies added in updates reach veterans who already qualify.
         syncEarnedCosmetics()
+        // First launch after an update may never touch the profile; publish
+        // once so the extension is never left with a stock captain.
+        publishAppearance()
     }
 
     var coins: Int { profile.coins }
@@ -333,5 +337,14 @@ final class ProfileStore {
         if let data = try? JSONEncoder().encode(profile) {
             defaults.set(data, forKey: PlayerProfile.saveKey)
         }
+        publishAppearance()
+    }
+
+    /// Mirror the captain's look into the App Group so a Messages battle shows
+    /// the same portrait and the same fleet of toys the app does.
+    func publishAppearance() {
+        SharedAppGroup.publishAppearance(
+            SharedAppGroup.Appearance(avatarID: profile.avatarID, fleetID: profile.fleetID)
+        )
     }
 }

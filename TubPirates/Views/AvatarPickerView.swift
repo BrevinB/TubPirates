@@ -1,3 +1,4 @@
+import BathtubUI
 import SwiftUI
 
 /// Sheet for choosing the captain's portrait.
@@ -20,7 +21,7 @@ struct AvatarPickerView: View {
                 ScreenBackground(imageName: "tile_background")
                 RisingBubblesView()
                     .ignoresSafeArea()
-                    .allowsHitTesting(false)
+                    .decorativeMotion()
 
                 ScrollView {
                     HStack {
@@ -94,12 +95,17 @@ struct AvatarPickerView: View {
                             }
                             pendingPurchase = nil
                         }
+                    } else {
+                        Button("Get Doubloons") {
+                            pendingPurchase = nil
+                            openDoubloonShop($showShop)
+                        }
                     }
                     Button("Cancel", role: .cancel) { pendingPurchase = nil }
                 }
             } message: {
                 if let avatar = pendingPurchase, profileStore.coins < avatar.price {
-                    Text("Ye need \(avatar.price - profileStore.coins) more doubloons. Win battles to earn them!")
+                    Text("Ye need \(avatar.price - profileStore.coins) more doubloons. Win battles to earn them — or visit the merchant.")
                 }
             }
         }

@@ -1,3 +1,4 @@
+import BathtubUI
 import GameKit
 import Observation
 import SwiftUI
@@ -251,7 +252,7 @@ struct HallOfFameView: View {
                 ScreenBackground(imageName: "tile_background")
                 RisingBubblesView()
                     .ignoresSafeArea()
-                    .allowsHitTesting(false)
+                    .decorativeMotion()
 
                 VStack(spacing: 14) {
                     Text("Hall o' Fame")

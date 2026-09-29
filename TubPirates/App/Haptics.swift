@@ -1,25 +1,19 @@
+import BathtubUI
 import UIKit
 
-/// One switch for every buzz: all haptic feedback routes through the
-/// Settings toggle (on by default, key `hapticsEnabled`).
+/// The app's spelling of the shared haptics switch.
+///
+/// The implementation lives in `BathtubUI.TubHaptics` so the Messages
+/// extension buzzes on exactly the same rules; this stays as the name the
+/// app's own call sites already use.
 enum Haptics {
-    static var isEnabled: Bool {
-        let defaults = UserDefaults.standard
-        return defaults.object(forKey: "hapticsEnabled") == nil || defaults.bool(forKey: "hapticsEnabled")
-    }
+    static var isEnabled: Bool { TubHaptics.isEnabled }
 
     static func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle = .medium, intensity: CGFloat? = nil) {
-        guard isEnabled else { return }
-        let generator = UIImpactFeedbackGenerator(style: style)
-        if let intensity {
-            generator.impactOccurred(intensity: intensity)
-        } else {
-            generator.impactOccurred()
-        }
+        TubHaptics.impact(style, intensity: intensity)
     }
 
     static func notify(_ type: UINotificationFeedbackGenerator.FeedbackType) {
-        guard isEnabled else { return }
-        UINotificationFeedbackGenerator().notificationOccurred(type)
+        TubHaptics.notify(type)
     }
 }

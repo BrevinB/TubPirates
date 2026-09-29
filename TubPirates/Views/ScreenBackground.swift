@@ -1,13 +1,8 @@
+import BathtubUI
 import SwiftUI
 
-extension View {
-    /// Caps a content column at a readable width and centers it — cards on
-    /// iPad stretched into full-width planks without this.
-    func contentColumn(_ maxWidth: CGFloat = 600) -> some View {
-        frame(maxWidth: maxWidth)
-            .frame(maxWidth: .infinity)
-    }
-}
+// `contentColumn`, `hitTarget` and `decorativeMotion` moved to BathtubUI so
+// the Messages extension lays out on the same rules; import brings them in.
 
 /// Full-bleed key-art backdrop used by menu-adjacent screens.
 struct ScreenBackground: View {
@@ -15,11 +10,16 @@ struct ScreenBackground: View {
 
     var body: some View {
         GeometryReader { geo in
-            Image(imageName)
-                .resizable()
-                .scaledToFill()
-                .frame(width: geo.size.width, height: geo.size.height)
-                .clipped()
+            ArtworkImage(
+                name: imageName,
+                width: geo.size.width,
+                height: geo.size.height,
+                contentMode: .fill,
+                // Key art sits behind a gradient and the content; true 3x
+                // density on a 1536x2752 source is megabytes for nothing.
+                maxPixelDimension: 1600
+            )
+            .clipped()
         }
         .ignoresSafeArea()
     }

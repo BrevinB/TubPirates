@@ -1,3 +1,5 @@
+import BathtubArena
+import BathtubUI
 import SwiftUI
 import BathtubEngine
 
@@ -78,12 +80,17 @@ struct ArmoryView: View {
                         }
                         pendingFleet = nil
                     }
+                } else {
+                    Button("Get Doubloons") {
+                        pendingFleet = nil
+                        openDoubloonShop($showShop)
+                    }
                 }
                 Button("Cancel", role: .cancel) { pendingFleet = nil }
             }
         } message: {
             if let fleet = pendingFleet, profileStore.coins < fleet.price {
-                Text("Ye need \(fleet.price - profileStore.coins) more doubloons. Win battles to earn them!")
+                Text("Ye need \(fleet.price - profileStore.coins) more doubloons. Win battles to earn them — or visit the merchant.")
             }
         }
         .navigationTitle("Armory")
@@ -287,6 +294,13 @@ struct ArmoryView: View {
 
             if inStock {
                 Button {
+                    // Short purse: the merchant is the next step, not a
+                    // grayed-out button with nowhere to go.
+                    guard affordable else {
+                        SoundService.shared.play(.tap)
+                        showShop = true
+                        return
+                    }
                     withAnimation {
                         if profileStore.buyUse(of: shot) {
                             SoundService.shared.play(.coin)
@@ -303,7 +317,9 @@ struct ArmoryView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(affordable ? .orange : .gray)
-                .disabled(!affordable)
+                .accessibilityHint(affordable
+                    ? String(localized: "Buys one use")
+                    : String(localized: "Not enough doubloons. Opens the doubloon merchant."))
             }
         }
         .padding(12)

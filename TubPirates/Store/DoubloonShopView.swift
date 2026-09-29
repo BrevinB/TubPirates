@@ -1,5 +1,17 @@
+import BathtubUI
 import StoreKit
 import SwiftUI
+
+/// Opens the merchant once the confirmation dialog that asked for it has
+/// finished dismissing — flipping a sheet binding in the same tick as a
+/// dialog button makes SwiftUI swallow the sheet.
+@MainActor
+func openDoubloonShop(_ isPresented: Binding<Bool>) {
+    Task { @MainActor in
+        try? await Task.sleep(for: .milliseconds(250))
+        isPresented.wrappedValue = true
+    }
+}
 
 /// The doubloon merchant: coin packs bought with real money via RevenueCat.
 /// Shows a friendly closed-shop state until the store is configured.
@@ -18,7 +30,7 @@ struct DoubloonShopView: View {
                 ScreenBackground(imageName: "tile_background")
                 RisingBubblesView()
                     .ignoresSafeArea()
-                    .allowsHitTesting(false)
+                    .decorativeMotion()
 
                 ScrollView {
                     VStack(spacing: 16) {

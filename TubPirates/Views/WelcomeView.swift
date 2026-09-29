@@ -1,3 +1,4 @@
+import BathtubUI
 import SwiftUI
 
 /// First-launch story: three quick pages that set the scene, teach the goal,
@@ -11,7 +12,7 @@ struct WelcomeView: View {
             ScreenBackground(imageName: "tile_background")
             RisingBubblesView()
                 .ignoresSafeArea()
-                .allowsHitTesting(false)
+                .decorativeMotion()
 
             VStack(spacing: 0) {
                 HStack {

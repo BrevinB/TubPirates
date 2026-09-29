@@ -1,5 +1,6 @@
-import SwiftUI
 import BathtubEngine
+import BathtubUI
+import SwiftUI
 
 /// Vertical arsenal panel on the right edge of the match screen —
 /// mirrors the original game's cannon list with tooltips.
@@ -9,38 +10,41 @@ struct ShotPanelView: View {
     @State private var tooltipShot: ShotType?
     @State private var confirmFlare = false
     @State private var pendingPurchase: ShotType?
+    @State private var showShop = false
+    /// The shot the captain was trying to buy when they ran short — the
+    /// purchase prompt comes back on its own if the merchant fills the purse.
+    @State private var shopReturnShot: ShotType?
 
-    private static let iconNames: [ShotType: String] = [
-        .cannon: "icon_cannon", .parrotScout: "icon_parrot", .bigShot: "icon_bigshot",
-        .flare: "icon_flare", .chainShot: "icon_chain", .fireworks: "icon_fireworks",
-    ]
-
-    /// Shared lookup for other views (end-screen unlock banners).
-    static func iconName(for shot: ShotType) -> String {
-        iconNames[shot] ?? "icon_cannon"
-    }
+    /// Shared lookup for other views (end-screen unlock banners). The map
+    /// itself lives in BathtubUI so the Messages arsenal shows the same art.
+    static func iconName(for shot: ShotType) -> String { shot.iconName }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 8) {
+        ArsenalPanelView(
+            slots: slots,
+            selected: viewModel.selectedShot,
+            showsOrientation: viewModel.selectedShot.spec.needsOrientation,
+            orientation: viewModel.selectedOrientation,
+            onSelect: handleTap,
+            onToggleOrientation: viewModel.toggleOrientation,
+            onLongPress: { shot in tooltipShot = tooltipShot == shot ? nil : shot }
+        ) {
             if let tooltipShot {
-                tooltip(for: tooltipShot)
-                    .transition(.opacity.combined(with: .move(edge: .trailing)))
-            }
-
-            VStack(spacing: 8) {
-                ForEach(viewModel.shotsForPanel, id: \.shot) { entry in
-                    shotButton(entry.shot, remaining: entry.remaining)
+                ArsenalTooltipView(shot: tooltipShot, onTap: { self.tooltipShot = nil }) {
+                    if !profileStore.isShotInStock(tooltipShot),
+                       let requirement = profileStore.armoryRequirement(for: tooltipShot) {
+                        Label(
+                            "Defeat \(requirement.localizedName) ×\(requirement.winsToAdvance) to unlock",
+                            systemImage: "lock.fill"
+                        )
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        // Was (0.7, 0.4, 0.1) — 4.0:1 on parchment, under the
+                        // 4.5:1 floor for this size.
+                        .foregroundStyle(Color(red: 0.6, green: 0.33, blue: 0.06))
+                    }
                 }
-                if viewModel.selectedShot.spec.needsOrientation {
-                    orientationButton
-                }
+                .transition(.opacity.combined(with: .move(edge: .trailing)))
             }
-            .padding(6)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(Color(red: 0.45, green: 0.29, blue: 0.14).opacity(0.92))
-                    .strokeBorder(Color(red: 0.85, green: 0.65, blue: 0.3), lineWidth: 2)
-            )
         }
         .animation(.easeOut(duration: 0.2), value: tooltipShot)
         .confirmationDialog(
@@ -70,6 +74,10 @@ struct ShotPanelView: View {
                         }
                         pendingPurchase = nil
                     }
+                } else {
+                    // Short purse mid-battle: send them to the merchant
+                    // instead of dead-ending on a Cancel button.
+                    Button("Get Doubloons") { openShop(for: shot) }
                 }
                 Button("Cancel", role: .cancel) { pendingPurchase = nil }
             }
@@ -78,127 +86,70 @@ struct ShotPanelView: View {
                 if profileStore.coins >= shot.spec.coinCost {
                     Text("It arms immediately for this battle.")
                 } else {
-                    Text("Ye need \(shot.spec.coinCost - profileStore.coins) more doubloons, matey.")
+                    Text("Ye need \(shot.spec.coinCost - profileStore.coins) more doubloons, matey. Visit the merchant to top up without leavin' the battle.")
                 }
             }
         }
+        .sheet(isPresented: $showShop, onDismiss: reofferAfterShop) {
+            DoubloonShopView()
+        }
     }
 
-    private func shotButton(_ shot: ShotType, remaining: Int?) -> some View {
-        let spent = (remaining ?? 1) <= 0
-
-        return Button {
-            if spent {
-                // Empty slot: offer a doubloon refill when eligible — the
-                // armory ladder gate applies in battle too.
-                if viewModel.canOfferPurchase(of: shot) {
-                    SoundService.shared.play(.tap)
-                    if profileStore.isShotInStock(shot) {
-                        pendingPurchase = shot
-                    } else {
-                        // Locked behind the captain ladder: explain why.
-                        tooltipShot = tooltipShot == shot ? nil : shot
-                    }
-                }
-                return
+    /// The panel's slots, with this app's economy folded into each state:
+    /// an empty special is `buyable` when doubloons can refill it, `locked`
+    /// while the captain ladder still gates it, and plain `spent` otherwise.
+    private var slots: [ArsenalSlot] {
+        viewModel.shotsForPanel.map { entry in
+            let spent = (entry.remaining ?? 1) <= 0
+            let state: ArsenalSlotState
+            if !spent {
+                state = .ready
+            } else if viewModel.canOfferPurchase(of: entry.shot) {
+                state = profileStore.isShotInStock(entry.shot) ? .buyable : .locked
+            } else {
+                state = .spent
             }
+            return .init(shot: entry.shot, remaining: entry.remaining, state: state)
+        }
+    }
+
+    private func handleTap(_ slot: ArsenalSlot) {
+        switch slot.state {
+        case .buyable:
             SoundService.shared.play(.tap)
-            if shot == .flare {
+            pendingPurchase = slot.shot
+        case .locked:
+            // Behind the captain ladder: explain why instead of no-op.
+            SoundService.shared.play(.tap)
+            tooltipShot = tooltipShot == slot.shot ? nil : slot.shot
+        case .spent:
+            break
+        case .ready:
+            SoundService.shared.play(.tap)
+            if slot.shot == .flare {
                 confirmFlare = true
             } else {
-                viewModel.select(shot)
+                viewModel.select(slot.shot)
             }
             tooltipShot = nil
-        } label: {
-            Image(Self.iconNames[shot] ?? "icon_cannon")
-                .resizable()
-                .scaledToFill()
-                .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 9))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 9)
-                        .strokeBorder(
-                            viewModel.selectedShot == shot ? Color.red : .black.opacity(0.35),
-                            lineWidth: viewModel.selectedShot == shot ? 3 : 1.5
-                        )
-                )
-                .saturation(spent ? 0.1 : 1)
-                .opacity(spent ? 0.5 : 1)
-                .overlay {
-                    if spent, viewModel.canOfferPurchase(of: shot), !profileStore.isShotInStock(shot) {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(.white)
-                            .shadow(color: .black.opacity(0.7), radius: 2)
-                    }
-                }
-                .overlay(alignment: .topTrailing) {
-                    if spent, viewModel.canOfferPurchase(of: shot), profileStore.isShotInStock(shot) {
-                        // Buyable refill: coin badge instead of the gray zero.
-                        Image("coin_doubloon")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 17, height: 17)
-                            .padding(3)
-                            .background(Color.orange, in: Circle())
-                            .offset(x: 5, y: -5)
-                    } else if let remaining {
-                        Text("\(remaining)")
-                            .font(.system(size: 11, weight: .heavy, design: .rounded))
-                            .foregroundStyle(.white)
-                            .padding(4)
-                            .background(remaining > 0 ? Color.blue : .gray, in: Circle())
-                            .offset(x: 5, y: -5)
-                    }
-                }
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            LongPressGesture(minimumDuration: 0.35).onEnded { _ in
-                tooltipShot = tooltipShot == shot ? nil : shot
-            }
-        )
-        .accessibilityLabel(shot.localizedDisplayName)
     }
 
-    private var orientationButton: some View {
-        Button {
-            viewModel.toggleOrientation()
-        } label: {
-            Image(systemName: viewModel.selectedOrientation == .horizontal
-                  ? "arrow.left.and.right" : "arrow.up.and.down")
-                .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 48, height: 36)
-                .background(Color.blue.opacity(0.8), in: RoundedRectangle(cornerRadius: 9))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Rotate chain shot")
+    /// Closes the purchase prompt and opens the merchant, remembering what
+    /// the captain came for.
+    private func openShop(for shot: ShotType) {
+        pendingPurchase = nil
+        shopReturnShot = shot
+        openDoubloonShop($showShop)
     }
 
-    private func tooltip(for shot: ShotType) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(shot.localizedDisplayName)
-                .font(.system(size: 14, weight: .heavy, design: .rounded))
-                .foregroundStyle(Color(red: 0.5, green: 0.15, blue: 0.1))
-            Text(shot.localizedBlurb)
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.05))
-            if !profileStore.isShotInStock(shot),
-               let requirement = profileStore.armoryRequirement(for: shot) {
-                Label("Defeat \(requirement.localizedName) ×\(requirement.winsToAdvance) to unlock",
-                      systemImage: "lock.fill")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color(red: 0.7, green: 0.4, blue: 0.1))
-            }
-        }
-        .padding(10)
-        .frame(maxWidth: 190)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(red: 1, green: 0.96, blue: 0.75))
-                .strokeBorder(Color(red: 0.75, green: 0.55, blue: 0.2), lineWidth: 2)
-        )
-        .onTapGesture { tooltipShot = nil }
+    /// Back from the merchant: if the purse now covers the shot they came
+    /// for, put the buy prompt straight back up so the trip completes.
+    private func reofferAfterShop() {
+        defer { shopReturnShot = nil }
+        guard let shot = shopReturnShot,
+              profileStore.coins >= shot.spec.coinCost,
+              viewModel.canOfferPurchase(of: shot) else { return }
+        pendingPurchase = shot
     }
 }

@@ -3,6 +3,7 @@ import GameKit
 import Observation
 import UIKit
 import BathtubEngine
+import BathtubUI
 
 /// What the scene must be able to render on the view model's behalf.
 /// Async methods complete when their animations finish — they gate the turn machine.
@@ -97,13 +98,9 @@ final class MatchViewModel {
     // MARK: - Fleet status (HUD bars)
 
     /// One row of the HUD fleet bar: a ship's length, damage, and fate.
-    struct FleetShipStatus: Identifiable {
-        let id: String
-        let length: Int
-        /// Segments to fill as damaged (own fleet only; the rival's is 0 or all).
-        let hitCount: Int
-        let isSunk: Bool
-    }
+    /// The shared bar owns the type so the Messages battle can't drift into a
+    /// second shape for the same data.
+    typealias FleetShipStatus = FleetBarView.ShipStatus
 
     /// The local player's fleet, largest first, with per-cell damage.
     var ownFleetStatus: [FleetShipStatus] {

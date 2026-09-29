@@ -1,3 +1,4 @@
+import BathtubArena
 import SwiftUI
 import BathtubEngine
 
@@ -6,6 +7,7 @@ enum Route: Hashable {
     case placement(MatchConfig)
     case match(MatchConfig)
     case harbor
+    case messageChallenge
     case armory
     case settings
 }
@@ -29,6 +31,8 @@ struct RootView: View {
                         MatchView(config: config, path: $path)
                     case .harbor:
                         OnlineHarborView(path: $path)
+                    case .messageChallenge:
+                        MessageChallengePlacementView(path: $path)
                     case .armory:
                         ArmoryView()
                     case .settings:
@@ -62,6 +66,12 @@ struct RootView: View {
             SoundService.shared.warmUp()
             SoundService.shared.startMusic()
             Analytics.start()
+            // Mirror the comfort settings the extension can't read from our
+            // own defaults domain.
+            SharedAppGroup.publishHapticsEnabled(Haptics.isEnabled)
+            #if DEBUG
+            LayoutProbe.runIfRequested()
+            #endif
             // Wire crediting before configure: the launch-time reconcile can
             // grant coins (e.g. an offer code redeemed while the app was
             // closed), and those must land in the profile.
@@ -139,6 +149,7 @@ struct RootView: View {
             case "tutorial": path = [.match(.tutorialBattle)]
             case "captains": path = [.captains(MatchConfig(mode: .ai))]
             case "harbor": path = [.harbor]
+            case "messageChallenge": path = [.messageChallenge]
             case "armory": path = [.armory]
             case "settings": path = [.settings]
             case "resume": path = [.match(MatchConfig(mode: .ai, resume: true))]

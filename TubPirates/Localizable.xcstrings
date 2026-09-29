@@ -2082,6 +2082,7 @@
       }
     },
     "Big Shot Cannon" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2357,6 +2358,9 @@
         }
       }
     },
+    "Buys one use" : {
+
+    },
     "Cancel" : {
       "localizations" : {
         "de" : {
@@ -2404,6 +2408,7 @@
       }
     },
     "Cannon" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2588,6 +2593,7 @@
       }
     },
     "Chain Shot" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2632,6 +2638,12 @@
           }
         }
       }
+    },
+    "Challenge by Message" : {
+
+    },
+    "Challenge!" : {
+
     },
     "Change captain avatar" : {
       "localizations" : {
@@ -2908,6 +2920,9 @@
           }
         }
       }
+    },
+    "Couldn't open Messages" : {
+
     },
     "Couldn't reach the harbor" : {
       "localizations" : {
@@ -3232,6 +3247,7 @@
       }
     },
     "Dinghy" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3692,6 +3708,7 @@
       }
     },
     "Duck Sub" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4106,6 +4123,7 @@
       }
     },
     "Fireworks Cannon" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4290,6 +4308,7 @@
       }
     },
     "Flare Cannon" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4336,6 +4355,7 @@
       }
     },
     "Fleet ready, Captain! ⚓️" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4428,6 +4448,7 @@
       }
     },
     "Galleon" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4472,6 +4493,9 @@
           }
         }
       }
+    },
+    "Get Doubloons" : {
+
     },
     "Got a doubloon code from the captain?" : {
       "localizations" : {
@@ -5026,6 +5050,7 @@
       }
     },
     "Linked cannonballs rake three tiles in a row." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5393,6 +5418,9 @@
         }
       }
     },
+    "Not enough doubloons. Opens the doubloon merchant." : {
+
+    },
     "OK" : {
       "localizations" : {
         "de" : {
@@ -5486,6 +5514,7 @@
       }
     },
     "Parrot Scout" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5622,6 +5651,9 @@
           }
         }
       }
+    },
+    "Place yer fleet and fight back." : {
+
     },
     "Place Your Fleet" : {
       "localizations" : {
@@ -6038,6 +6070,7 @@
       }
     },
     "Rotate chain shot" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6266,6 +6299,9 @@
           }
         }
       }
+    },
+    "Sends a battle challenge to a friend in Messages" : {
+
     },
     "Set Sail!" : {
       "localizations" : {
@@ -6864,6 +6900,9 @@
           }
         }
       }
+    },
+    "Tap to place your fleet" : {
+
     },
     "TAUNT_PUSH" : {
       "comment" : "Push notification body for an incoming quick-chat taunt. %@ is the canned message.",
@@ -7560,6 +7599,7 @@
       }
     },
     "This cannon will shoot 5 shots in an X pattern." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7605,7 +7645,11 @@
         }
       }
     },
+    "This device can't send messages. Try again from the Messages app." : {
+
+    },
     "This monster cannon targets four tiles at once." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7789,7 +7833,20 @@
         }
       }
     },
+    "TUB PIRATES" : {
+
+    },
+    "Tub Pirates battle" : {
+
+    },
+    "Tub Pirates Challenge" : {
+
+    },
+    "Tub Pirates challenge. Tap to place your fleet." : {
+
+    },
     "Tugboat" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7882,6 +7939,7 @@
       }
     },
     "Use this shot to 'see' all of the ships in a certain area. Causes no damage." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7928,6 +7986,7 @@
       }
     },
     "Use this special cannon shot to reveal your opponent's ship's location." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8204,6 +8263,7 @@
       }
     },
     "Wind-Up Whale" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8249,7 +8309,11 @@
         }
       }
     },
+    "YE BE CHALLENGED" : {
+
+    },
     "Ye need %lld more doubloons, matey." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8295,7 +8359,14 @@
         }
       }
     },
+    "Ye need %lld more doubloons, matey. Visit the merchant to top up without leavin' the battle." : {
+
+    },
+    "Ye need %lld more doubloons. Win battles to earn them — or visit the merchant." : {
+
+    },
     "Ye need %lld more doubloons. Win battles to earn them!" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8762,6 +8833,7 @@
       }
     },
     "Your trusty cannon. Fires a single shot." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

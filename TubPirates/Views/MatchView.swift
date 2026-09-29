@@ -1,3 +1,5 @@
+import BathtubArena
+import BathtubUI
 import SwiftUI
 import SpriteKit
 import StoreKit
@@ -70,7 +72,7 @@ private struct MatchContentView: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.13, green: 0.35, blue: 0.55).ignoresSafeArea()
+            TubPalette.arenaBackdrop.ignoresSafeArea()
 
             if let scene {
                 SpriteView(scene: scene)
@@ -384,115 +386,45 @@ private struct MatchContentView: View {
                 EndPortrait(imageName: playerImage, renderSad: true))
     }
 
-    /// Five tiny segment rows, one per ship, largest on top — fleet health at
-    /// a glance without squinting at the mini board. Own bar fills damaged
-    /// segments red; the rival's rows only flip when a ship actually sinks.
-    private func fleetBar(
-        _ fleet: [MatchViewModel.FleetShipStatus],
-        alignment: HorizontalAlignment
-    ) -> some View {
-        VStack(alignment: alignment, spacing: 2.5) {
-            ForEach(fleet) { ship in
-                HStack(spacing: 1.5) {
-                    ForEach(0..<ship.length, id: \.self) { segment in
-                        RoundedRectangle(cornerRadius: 1.5)
-                            .fill(segmentColor(ship, segment: segment))
-                            .frame(width: 8, height: 5.5)
-                    }
-                }
-                .overlay {
-                    if ship.isSunk {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 8, weight: .black))
-                            .foregroundStyle(Color(red: 1, green: 0.3, blue: 0.25))
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, 5)
-        .padding(.vertical, 4)
-        // Solid ship's-timber brown (the reward chips' color) instead of
-        // translucent black; the cream segments stay high-contrast on it.
-        .background(
-            RoundedRectangle(cornerRadius: 7)
-                .fill(Color(red: 0.35, green: 0.2, blue: 0.08).opacity(0.88))
-        )
-        .animation(.easeInOut(duration: 0.3), value: fleet.map(\.hitCount))
-    }
-
-    private func segmentColor(_ ship: MatchViewModel.FleetShipStatus, segment: Int) -> Color {
-        if ship.isSunk { return Color(white: 0.35) }
-        if segment < ship.hitCount { return Color(red: 0.9, green: 0.25, blue: 0.18) }
-        return Color(red: 1, green: 0.94, blue: 0.8)
-    }
-
     private func hud(_ viewModel: MatchViewModel) -> some View {
-        VStack {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 8) {
-                    PlayerHUDView(
-                        imageName: viewModel.enemyPortrait,
-                        name: viewModel.displayName(for: viewModel.localPlayer.opponent),
-                        highlighted: viewModel.highlightedPlayer == viewModel.localPlayer.opponent
-                    )
-                    fleetBar(viewModel.enemyFleetStatus, alignment: .leading)
-                    leaveButton(viewModel)
-                }
-                Spacer()
-                // While someone talks, the status pill becomes the speech —
-                // chat lives in the top chrome band where it can't cover the
-                // board, instead of floating bubbles over playable water.
-                if let speech = activeSpeech(viewModel) {
-                    speechPill(speech)
-                        .id(speech.text) // new line = new view, no crossfading texts
-                        .transition(.scale(scale: 0.7, anchor: .top).combined(with: .opacity))
-                } else {
-                    statusBanner(viewModel)
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 8) {
-                    PlayerHUDView(
-                        imageName: viewModel.mode == .passAndPlay ? "portrait_player" : profileStore.avatarID,
-                        name: viewModel.displayName(for: viewModel.localPlayer),
-                        highlighted: viewModel.highlightedPlayer == viewModel.localPlayer
-                    )
-                    fleetBar(viewModel.ownFleetStatus, alignment: .trailing)
-                    if showsQuickChat(viewModel) {
-                        Button {
-                            SoundService.shared.play(.tap)
-                            showChatSheet = true
-                        } label: {
-                            Label("Chat", systemImage: "bubble.left.fill")
-                                .font(.system(size: 13, weight: .bold, design: .rounded))
-                                .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.05))
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(
-                                    Capsule()
-                                        .fill(Color(red: 1, green: 0.96, blue: 0.85))
-                                        .strokeBorder(Color(red: 0.75, green: 0.55, blue: 0.2), lineWidth: 2)
-                                )
-                                .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
-                        }
-                        .buttonStyle(.plain)
-                    }
+        BattleHUDView(
+            rival: .init(
+                imageName: viewModel.enemyPortrait,
+                name: viewModel.displayName(for: viewModel.localPlayer.opponent),
+                highlighted: viewModel.highlightedPlayer == viewModel.localPlayer.opponent
+            ),
+            local: .init(
+                imageName: viewModel.mode == .passAndPlay ? "portrait_player" : profileStore.avatarID,
+                name: viewModel.displayName(for: viewModel.localPlayer),
+                highlighted: viewModel.highlightedPlayer == viewModel.localPlayer
+            ),
+            rivalFleet: viewModel.enemyFleetStatus,
+            localFleet: viewModel.ownFleetStatus
+        ) {
+            // While someone talks, the status pill becomes the speech —
+            // chat lives in the top chrome band where it can't cover the
+            // board, instead of floating bubbles over playable water.
+            if let speech = activeSpeech(viewModel) {
+                speechPill(speech)
+                    .id(speech.text) // new line = new view, no crossfading texts
+                    .transition(.scale(scale: 0.7, anchor: .top).combined(with: .opacity))
+            } else {
+                statusBanner(viewModel)
+            }
+        } rivalFooter: {
+            leaveButton(viewModel)
+        } localFooter: {
+            if showsQuickChat(viewModel) {
+                TubCapsuleButton(title: String(localized: "Chat"), systemImage: "bubble.left.fill") {
+                    SoundService.shared.play(.tap)
+                    showChatSheet = true
                 }
             }
-            .padding(.horizontal, 12)
-            .animation(.spring(duration: 0.3), value: viewModel.captainLine)
-            .animation(.spring(duration: 0.3), value: viewModel.chatLine)
-
-            Spacer()
-        }
-        // The shot panel is bottom-anchored, so it overlays instead of
-        // sharing the VStack: on squat screens the stacked total could
-        // exceed the height when a speech bubble showed, and the vertical
-        // squeeze truncated the HUD name labels to one line.
-        .overlay(alignment: .bottomTrailing) {
+        } arsenal: {
             ShotPanelView(viewModel: viewModel)
-                .padding(.trailing, 6)
-                .padding(.bottom, 40)
         }
+        .animation(.spring(duration: 0.3), value: viewModel.captainLine)
+        .animation(.spring(duration: 0.3), value: viewModel.chatLine)
     }
 
     /// Canned taunts only — 4+-safe, nothing to moderate. The pick shows on
@@ -656,20 +588,11 @@ private struct MatchContentView: View {
     }
 
     private func leaveButton(_ viewModel: MatchViewModel) -> some View {
-        Button {
+        TubCapsuleButton(
+            title: String(localized: "Leave"),
+            systemImage: "rectangle.portrait.and.arrow.right"
+        ) {
             confirmLeave = true
-        } label: {
-            Label("Leave", systemImage: "rectangle.portrait.and.arrow.right")
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.05))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule()
-                        .fill(Color(red: 1, green: 0.96, blue: 0.85))
-                        .strokeBorder(Color(red: 0.75, green: 0.55, blue: 0.2), lineWidth: 2)
-                )
-                .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
         }
         .confirmationDialog(
             "Leave the battle?",
@@ -721,19 +644,7 @@ private struct MatchContentView: View {
     /// object that alternates between game state and table talk (the old
     /// translucent black capsule looked like system chrome in a pirate tub).
     private func statusBanner(_ viewModel: MatchViewModel) -> some View {
-        Text(viewModel.statusText)
-            .font(.system(size: 14.5, weight: .heavy, design: .rounded))
-            .foregroundStyle(Color(red: 0.35, green: 0.2, blue: 0.05))
-            .lineLimit(2)
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(
-                Capsule()
-                    .fill(Color(red: 1, green: 0.96, blue: 0.85))
-                    .strokeBorder(Color(red: 0.75, green: 0.55, blue: 0.2), lineWidth: 2)
-            )
-            .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
+        StatusBannerView(viewModel.statusText)
     }
 
     private func analyticsModeName(_ mode: MatchConfig.Mode) -> String {

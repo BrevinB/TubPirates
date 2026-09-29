@@ -1,3 +1,4 @@
+import BathtubUI
 import SwiftUI
 import GameKit
 import BathtubEngine
@@ -5,6 +6,7 @@ import BathtubEngine
 struct MainMenuView: View {
     @Binding var path: [Route]
     @Environment(ProfileStore.self) private var profileStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showAvatarPicker = false
     @State private var hasSavedMatch = MatchSaveStore.hasSave
     @State private var confirmDiscard = false
@@ -53,7 +55,7 @@ struct MainMenuView: View {
 
             RisingBubblesView()
                 .ignoresSafeArea()
-                .allowsHitTesting(false)
+                .decorativeMotion()
 
             VStack(spacing: 16) {
                 HStack {
@@ -84,7 +86,9 @@ struct MainMenuView: View {
                 // animation scoped to these effects — a plain .animation +
                 // onAppear toggle let the menu's first layout pass ride the
                 // repeatForever curve, flying the title in from the corner.
-                .phaseAnimator([false, true]) { content, bob in
+                // Bobbing is pure decoration: under Reduce Motion the
+                // title just sits there.
+                .phaseAnimator(reduceMotion ? [false] : [false, true]) { content, bob in
                     content
                         .rotationEffect(.degrees(bob ? 1.6 : -1.6))
                         .offset(y: bob ? -3 : 3)
@@ -295,6 +299,7 @@ struct MainMenuView: View {
                         .font(.system(size: 13))
                         .foregroundStyle(.white, .orange)
                 }
+                .hitTarget()
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Change captain avatar")

@@ -1,3 +1,4 @@
+import BathtubUI
 import SwiftUI
 
 /// A progression reward revealed on the victory screen.
@@ -54,11 +55,11 @@ struct MatchEndView: View {
             if didWin {
                 FallingConfettiView()
                     .ignoresSafeArea()
-                    .allowsHitTesting(false)
+                    .decorativeMotion()
             } else {
                 RisingBubblesView()
                     .ignoresSafeArea()
-                    .allowsHitTesting(false)
+                    .decorativeMotion()
                     .opacity(0.4)
             }
 

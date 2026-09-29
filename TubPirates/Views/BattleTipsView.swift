@@ -58,20 +58,21 @@ struct BattleTipsView: View {
                     HStack {
                         Image(systemName: tip.arrow)
                             .font(.system(size: 18, weight: .heavy))
-                            .foregroundStyle(Color(red: 0.6, green: 0.42, blue: 0.22))
+                            .foregroundStyle(Color(red: 0.5, green: 0.34, blue: 0.16))
                         Spacer()
                         Text(step < Self.tips.count - 1 ? "Tap to continue (\(step + 1)/\(Self.tips.count))" : "Tap to battle!")
                             .font(.system(size: 12, weight: .heavy, design: .rounded))
-                            .foregroundStyle(Color(red: 0.6, green: 0.42, blue: 0.22))
+                            .foregroundStyle(Color(red: 0.5, green: 0.34, blue: 0.16))
                     }
                 }
                 .padding(14)
                 .background(
                     RoundedRectangle(cornerRadius: 14)
                         .fill(Color(red: 1, green: 0.96, blue: 0.85))
-                        .strokeBorder(Color(red: 0.6, green: 0.42, blue: 0.22), lineWidth: 2.5)
+                        .strokeBorder(Color(red: 0.5, green: 0.34, blue: 0.16), lineWidth: 2.5)
                         .shadow(color: .black.opacity(0.4), radius: 8, y: 4)
                 )
+                .frame(maxWidth: 440)
                 .padding(.horizontal, 24)
                 .position(x: geo.size.width / 2, y: geo.size.height * tip.anchor)
                 .id(step) // fresh card per step so transitions don't crossfade text

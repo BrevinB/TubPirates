@@ -1,35 +1,10 @@
-import Foundation
+import BathtubArena
 import BathtubEngine
+import BathtubUI
+import Foundation
 
-extension ShotType {
-    var localizedDisplayName: String {
-        switch self {
-        case .cannon: String(localized: "Cannon")
-        case .parrotScout: String(localized: "Parrot Scout")
-        case .bigShot: String(localized: "Big Shot Cannon")
-        case .flare: String(localized: "Flare Cannon")
-        case .chainShot: String(localized: "Chain Shot")
-        case .fireworks: String(localized: "Fireworks Cannon")
-        }
-    }
-
-    var localizedBlurb: String {
-        switch self {
-        case .cannon:
-            String(localized: "Your trusty cannon. Fires a single shot.")
-        case .parrotScout:
-            String(localized: "Use this shot to 'see' all of the ships in a certain area. Causes no damage.")
-        case .bigShot:
-            String(localized: "This monster cannon targets four tiles at once.")
-        case .flare:
-            String(localized: "Use this special cannon shot to reveal your opponent's ship's location.")
-        case .chainShot:
-            String(localized: "Linked cannonballs rake three tiles in a row.")
-        case .fireworks:
-            String(localized: "This cannon will shoot 5 shots in an X pattern.")
-        }
-    }
-}
+// ShotType and ShipKind names moved to BathtubUI so the Messages extension
+// gets the same translations; only the app-only models are left here.
 
 extension FleetSkin {
     var localizedName: String {
@@ -83,18 +58,6 @@ extension Captain {
             String(localized: "Decorated hero of the Great Soap Wars. The tub's final boss.")
         default:
             String(localized: "The scruffy scourge of the bathtub. All bark, some bite.")
-        }
-    }
-}
-
-extension ShipKind {
-    var localizedDisplayName: String {
-        switch self {
-        case .dinghy: String(localized: "Dinghy")
-        case .tugboat: String(localized: "Tugboat")
-        case .duckSub: String(localized: "Duck Sub")
-        case .frigate: String(localized: "Wind-Up Whale")
-        case .galleon: String(localized: "Galleon")
         }
     }
 }

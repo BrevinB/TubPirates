@@ -1,3 +1,4 @@
+import BathtubEngine
 import Foundation
 import TelemetryDeck
 
@@ -12,13 +13,18 @@ enum Analytics {
     private static var isConfigured = false
 
     /// Player-controlled opt-out (Settings → Privacy). Default: on.
+    /// The app owns the setting; the extension reads it through the App Group.
     static var isEnabled: Bool {
         let defaults = UserDefaults.standard
-        return defaults.object(forKey: "analyticsEnabled") == nil || defaults.bool(forKey: "analyticsEnabled")
+        return defaults.object(forKey: SharedAppGroup.analyticsEnabledKey) == nil
+            || defaults.bool(forKey: SharedAppGroup.analyticsEnabledKey)
     }
 
     /// Call once at app start. Safe to call again after the toggle flips on.
     static func start() {
+        // Mirror the setting where the extension can read it, including the
+        // default-on case for players who never opened the privacy toggle.
+        SharedAppGroup.publishAnalyticsEnabled(isEnabled)
         guard !isConfigured, isEnabled, !appID.hasPrefix("YOUR-") else { return }
         // In DEBUG the SDK auto-enters test mode, so dev signals stay out of
         // production charts.
@@ -77,6 +83,14 @@ enum Analytics {
 
     static func reviewPrompted(milestone: Int) {
         signal("Review.prompted", ["milestone": String(milestone)])
+    }
+
+    // MARK: - iMessage extension (the friend-to-friend loop)
+
+    /// Renders a shared `MessageAnalyticsEvent`. The extension sends the same
+    /// cases through its own sender, so both ends report one taxonomy.
+    static func messages(_ event: MessageAnalyticsEvent) {
+        signal(event.name, event.parameters)
     }
 
     static func captainDefeated(_ captainID: String, totalWins: Int) {

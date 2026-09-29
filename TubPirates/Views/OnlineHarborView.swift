@@ -1,11 +1,15 @@
+import BathtubArena
+import BathtubUI
 import SwiftUI
 import GameKit
+import MessageUI
 import BathtubEngine
 
 /// The themed online hub — replaces the stock Game Center matchmaker sheet.
 /// Lists your turn-based matches as parchment cards (rival's avatar + name +
 /// whose turn), with programmatic auto-matchmaking and friend invites.
 struct OnlineHarborView: View {
+    @Environment(ProfileStore.self) private var profileStore
     @Binding var path: [Route]
     @Environment(\.scenePhase) private var scenePhase
     @State private var gameCenter = GameCenterService.shared
@@ -18,6 +22,8 @@ struct OnlineHarborView: View {
     @State private var openingMatchID: String?
     /// Network failure to surface ("the seas are rough" alert).
     @State private var errorMessage: String?
+    /// The message composer refused to open — never leave the button dead.
+    @State private var challengeUnavailable = false
 
     private let parchment = Color(red: 1, green: 0.96, blue: 0.85)
     private let ink = Color(red: 0.35, green: 0.2, blue: 0.08)
@@ -53,9 +59,11 @@ struct OnlineHarborView: View {
 
                     if !gameCenter.isAuthenticated {
                         signInCard
+                        messageChallengeButton
                     } else {
                         findBattleButton
                         inviteFriendButton
+                        messageChallengeButton
 
                         if isLoading {
                             ProgressView()
@@ -205,6 +213,36 @@ struct OnlineHarborView: View {
         }
         .buttonStyle(.bordered)
         .tint(cream)
+    }
+
+    /// Challenge a mate through iMessage. Deliberately outside the Game Center
+    /// gate: this battle runs entirely in a text thread, so it's the one way a
+    /// player who declined Game Center can still fight a real person — and the
+    /// one flow in the app that can put Tub Pirates in front of someone who
+    /// doesn't have it.
+    private var messageChallengeButton: some View {
+        Button {
+            SoundService.shared.play(.tap)
+            guard MessageChallengeComposer.canSend else {
+                challengeUnavailable = true
+                return
+            }
+            // Place your fleet first — the friend who receives this gets a
+            // placement screen, and the sender should get the same one.
+            path.append(.messageChallenge)
+        } label: {
+            Label("Challenge by Message", systemImage: "message.fill")
+                .font(.subheadline.weight(.bold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, gameCenter.isAuthenticated ? 5 : 7)
+        }
+        // Signed in it's the third option, so it matches Invite a Friend.
+        // Signed out it's the only way to reach a human, and a faint outline
+        // on dark wood doesn't read as tappable — so it gets real weight.
+        .buttonStyle(.borderedProminent)
+        .tint(gameCenter.isAuthenticated ? cream.opacity(0.18) : .teal)
+        .foregroundStyle(cream)
+        .accessibilityHint("Sends a battle challenge to a friend in Messages")
     }
 
     private var emptyStateCard: some View {

@@ -1,4 +1,6 @@
+import BathtubUI
 import SwiftUI
+import BathtubEngine
 import KickstartExchange
 
 struct SettingsView: View {
@@ -37,7 +39,7 @@ struct SettingsView: View {
             ScreenBackground(imageName: "tile_background")
             RisingBubblesView()
                 .ignoresSafeArea()
-                .allowsHitTesting(false)
+                .decorativeMotion()
 
             ScrollView {
                 VStack(spacing: 18) {
@@ -59,11 +61,20 @@ struct SettingsView: View {
                             }
                         divider
                         toggleRow("Haptics", icon: "iphone.radiowaves.left.and.right", isOn: $hapticsEnabled)
+                            .onChange(of: hapticsEnabled) { _, on in
+                                // Placement in the Messages extension buzzes
+                                // through the same switch, and the extension
+                                // only sees it through the App Group.
+                                SharedAppGroup.publishHapticsEnabled(on)
+                            }
                     }
 
                     card("Privacy", icon: "hand.raised.fill") {
                         toggleRow("Anonymous Analytics", icon: "chart.bar.fill", isOn: $analyticsEnabled)
                             .onChange(of: analyticsEnabled) { _, on in
+                                // The extension reads the setting through the
+                                // App Group, so publish it the moment it flips.
+                                SharedAppGroup.publishAnalyticsEnabled(on)
                                 if on { Analytics.start() }
                             }
                         footnote("Anonymous gameplay statistics (battles played, features used) help improve the game. No personal data, no tracking, ever.")
@@ -245,7 +256,9 @@ struct SettingsView: View {
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(inkSoft.opacity(0.5))
+                    // 0.5 opacity put this at 2.1:1 — below the 3:1 floor
+                    // for a glyph that carries meaning.
+                    .foregroundStyle(inkSoft.opacity(0.85))
             }
             .padding(.vertical, 10)
             .contentShape(Rectangle())
@@ -270,7 +283,9 @@ struct SettingsView: View {
     private func footnote(_ text: String) -> some View {
         Text(text)
             .font(.system(size: 12, weight: .semibold, design: .rounded))
-            .foregroundStyle(inkSoft.opacity(0.8))
+            // Full-strength inkSoft: at 0.8 opacity this footnote fell to
+            // 3.7:1 on the card, under the 4.5:1 floor for body text.
+            .foregroundStyle(inkSoft)
             .padding(.bottom, 8)
             .padding(.leading, 38)
     }
